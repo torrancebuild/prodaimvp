@@ -8,9 +8,9 @@ export interface SummaryOutput {
 export async function summarizeNotes(input: string): Promise<SummaryOutput> {
   try {
     // If no API key is configured, use fallback demo mode
-    if (!process.env.HUGGINGFACE_API_KEY) {
+    if (!process.env.HUGGINGFACE_API_KEY || process.env.HUGGINGFACE_API_KEY === '') {
       console.log('No API key configured, using demo mode')
-      return generateDemoOutput(input)
+      return await generateDemoOutput(input)
     }
 
     // Use Hugging Face Inference API for text summarization
