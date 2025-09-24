@@ -134,6 +134,11 @@ export async function getNotes(): Promise<Note[]> {
 
 async function keepLast10Meetings(): Promise<void> {
   try {
+    if (!supabase) {
+      console.log('Supabase not configured - skipping cleanup')
+      return
+    }
+    
     // Get all meetings ordered by creation date
     const { data, error } = await supabase
       .from('meetings')

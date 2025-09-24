@@ -50,9 +50,9 @@ export async function summarizeNotes(input: string): Promise<SummaryOutput> {
     const probingQuestions = generateProbingQuestions(input)
 
     // Split summary into bullet points
-    const summary = summaryText.split('. ').map(item => 
+    const summary = summaryText.split('. ').map((item: string) => 
       item.trim().replace(/\.$/, '')
-    ).filter(item => item.length > 0)
+    ).filter((item: string) => item.length > 0)
 
     return {
       summary: summary.length > 0 ? summary : ['No clear summary could be generated'],
@@ -180,7 +180,7 @@ function generateProbingQuestions(text: string): string[] {
 }
 
 // Demo mode function that works without API keys
-function generateDemoOutput(input: string): SummaryOutput {
+function generateDemoOutput(input: string): Promise<SummaryOutput> {
   // Simulate processing delay
   return new Promise((resolve) => {
     setTimeout(() => {
