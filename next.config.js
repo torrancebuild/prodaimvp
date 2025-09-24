@@ -6,6 +6,8 @@ const nextConfig = {
   env: {
     CUSTOM_KEY: process.env.CUSTOM_KEY,
   },
+  // Output configuration for Vercel
+  output: 'standalone',
   // Handle missing environment variables gracefully
   webpack: (config, { isServer }) => {
     if (!isServer) {
