@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { getVersionDisplay } from '@/lib/version'
 
 export const metadata: Metadata = {
   title: 'AI Meeting Notes Summarizer',
@@ -11,6 +12,8 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  const versionDisplay = getVersionDisplay();
+  
   return (
     <html lang="en">
       <body className="min-h-screen bg-gray-50">
@@ -27,13 +30,13 @@ export default function RootLayout({
               </div>
               <div className="text-right">
                 <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                  v{process.env.NODE_ENV === 'production' ? '1.0.0' : 'dev'}
+                  v{versionDisplay.version}
                 </div>
                 <div className="text-xs text-gray-400 mt-1">
-                  {process.env.NODE_ENV === 'production' ? 'bb46ce2' : 'local'}
+                  {versionDisplay.commit}
                 </div>
                 <div className="text-xs text-gray-300 mt-1">
-                  {process.env.NODE_ENV === 'production' ? 'hover tooltips' : 'latest'}
+                  {versionDisplay.feature}
                 </div>
               </div>
             </div>
