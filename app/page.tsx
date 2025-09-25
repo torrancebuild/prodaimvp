@@ -284,34 +284,11 @@ export default function Home() {
 
           <div className="output-section">
             <h3 className="font-medium text-gray-900 mb-2">Summary</h3>
-            <div className="space-y-2">
-              {output.summary.map((item, index) => {
-                // Check if this is a category header (starts with 📋)
-                if (item.startsWith('📋')) {
-                  return (
-                    <div key={index} className="font-semibold text-gray-800 mt-3 mb-1">
-                      {item}
-                    </div>
-                  )
-                }
-                // Check if this is a sub-point (starts with •)
-                else if (item.startsWith('•')) {
-                  return (
-                    <div key={index} className="ml-4 text-gray-700">
-                      {item}
-                    </div>
-                  )
-                }
-                // Regular bullet point
-                else {
-                  return (
-                    <div key={index} className="text-gray-700">
-                      • {item}
-                    </div>
-                  )
-                }
-              })}
-            </div>
+            <ul className="list-disc list-inside space-y-1">
+              {output.summary.map((item, index) => (
+                <li key={index} className="text-gray-700">{item}</li>
+              ))}
+            </ul>
           </div>
 
           <div className="output-section">
