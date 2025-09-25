@@ -20,14 +20,11 @@ export async function summarizeNotes(input: string): Promise<SummaryOutput> {
       return await generateDemoOutput(input)
     }
 
-    // Detect meeting type for context-aware processing (optimized)
-    const meetingType = detectMeetingTypeOptimized(input)
-    
-    // Extract temporal context for better summarization (lightweight)
-    const temporalContext = extractTemporalContextOptimized(input)
+    // Detect meeting type for context-aware processing
+    const meetingType = detectMeetingType(input)
     
     // Enhanced structured prompting for better AI outputs
-    const structuredPrompt = createStructuredPrompt(input, meetingType, temporalContext)
+    const structuredPrompt = createStructuredPrompt(input, meetingType)
     
     // Use Hugging Face Inference API for text summarization
     const summaryResponse = await fetch(
@@ -41,11 +38,10 @@ export async function summarizeNotes(input: string): Promise<SummaryOutput> {
         body: JSON.stringify({
           inputs: structuredPrompt,
           parameters: {
-            max_length: 300,
-            min_length: 80,
+            max_length: 400,
+            min_length: 100,
             do_sample: true,
-            temperature: 0.3,
-            top_p: 0.95
+            temperature: 0.3
           }
         }),
       }
@@ -70,16 +66,13 @@ export async function summarizeNotes(input: string): Promise<SummaryOutput> {
 
     // Better summary parsing with structured extraction
     const summary = parseStructuredSummary(summaryText, input)
-    
-    // Organize summary into hierarchical structure (optimized)
-    const hierarchicalSummary = organizeHierarchicalSummaryOptimized(summary)
 
     // Calculate quality metrics
     const qualityMetrics = calculateQualityMetrics(summary, actionItems, sopCheck, input)
     const confidenceScore = calculateConfidenceScore(qualityMetrics)
 
     return {
-      summary: hierarchicalSummary.length > 0 ? hierarchicalSummary : ['No clear summary could be generated'],
+      summary: summary.length > 0 ? summary : ['No clear summary could be generated'],
       actionItems: actionItems.length > 0 ? actionItems : ['No action items identified'],
       sopCheck: sopCheck,
       probingQuestions: probingQuestions,
@@ -237,522 +230,106 @@ function generateProbingQuestions(text: string, meetingType: string = 'general')
 function detectMeetingType(input: string): string {
   const lowerText = input.toLowerCase()
   
-  // Enhanced meeting type detection with scoring system
-  const meetingTypeScores = {
-    standup: 0,
-    planning: 0,
-    retrospective: 0,
-    decision: 0,
-    review: 0,
-    'problem-solving': 0,
-    general: 0
-  }
-  
-  // Standup/Status Meeting indicators
-  const standupIndicators = [
-    'standup', 'daily standup', 'status meeting', 'daily sync',
-    'yesterday', 'today', 'tomorrow', 'this week', 'last week',
-    'blocked', 'impediment', 'stuck', 'waiting for',
-    'accomplished', 'completed', 'finished', 'delivered',
-    'working on', 'planning to', 'next up', 'upcoming'
-  ]
-  
-  // Planning Meeting indicators
-  const planningIndicators = [
-    'planning', 'sprint planning', 'sprint', 'backlog', 'epic', 'story', 'task',
-    'user story', 'acceptance criteria', 'definition of done',
-    'estimation', 'story points', 'capacity', 'velocity',
-    'requirements', 'specifications', 'scope', 'deliverables'
-  ]
-  
-  // Retrospective indicators
-  const retrospectiveIndicators = [
-    'retro', 'retrospective', 'went well', 'didn\'t go well', 'improve',
-    'start doing', 'stop doing', 'continue doing', 'lessons learned',
-    'what worked', 'what didn\'t work', 'challenges', 'successes',
-    'team feedback', 'process improvement', 'team dynamics'
-  ]
-  
-  // Decision Meeting indicators
-  const decisionIndicators = [
-    'decision', 'decide', 'approve', 'reject', 'vote', 'consensus',
-    'agreed', 'concluded', 'resolved', 'chose', 'selected',
-    'option', 'alternatives', 'pros and cons', 'trade-offs',
-    'stakeholder', 'approval', 'sign-off', 'final decision'
-  ]
-  
-  // Review Meeting indicators
-  const reviewIndicators = [
-    'review', 'demo', 'presentation', 'showcase', 'walkthrough',
-    'feedback', 'stakeholder review', 'client review', 'approval',
-    'deliverable', 'milestone', 'checkpoint', 'gate review',
-    'quality', 'assessment', 'evaluation', 'criteria'
-  ]
-  
-  // Problem Solving indicators
-  const problemSolvingIndicators = [
-    'problem', 'issue', 'bug', 'fix', 'troubleshoot', 'debug',
-    'root cause', 'investigation', 'analysis', 'solution',
-    'workaround', 'mitigation', 'prevention', 'monitoring',
-    'incident', 'outage', 'failure', 'error', 'exception'
-  ]
-  
-  // Score each meeting type based on indicator presence
-  standupIndicators.forEach(indicator => {
-    if (lowerText.includes(indicator)) meetingTypeScores.standup += 1
-  })
-  
-  planningIndicators.forEach(indicator => {
-    if (lowerText.includes(indicator)) meetingTypeScores.planning += 1
-  })
-  
-  retrospectiveIndicators.forEach(indicator => {
-    if (lowerText.includes(indicator)) meetingTypeScores.retrospective += 1
-  })
-  
-  decisionIndicators.forEach(indicator => {
-    if (lowerText.includes(indicator)) meetingTypeScores.decision += 1
-  })
-  
-  reviewIndicators.forEach(indicator => {
-    if (lowerText.includes(indicator)) meetingTypeScores.review += 1
-  })
-  
-  problemSolvingIndicators.forEach(indicator => {
-    if (lowerText.includes(indicator)) meetingTypeScores['problem-solving'] += 1
-  })
-  
-  // Find the meeting type with the highest score
-  const maxScore = Math.max(...Object.values(meetingTypeScores))
-  
-  // If no clear indicators found, use general
-  if (maxScore === 0) {
-    return 'general'
-  }
-  
-  // Return the meeting type with the highest score
-  const detectedType = Object.entries(meetingTypeScores)
-    .find(([_, score]) => score === maxScore)?.[0] || 'general'
-  
-  return detectedType
-}
-
-// Optimized meeting type detection (faster)
-function detectMeetingTypeOptimized(input: string): string {
-  const lowerText = input.toLowerCase()
-  
-  // Quick keyword checks with early returns
-  if (lowerText.includes('standup') || lowerText.includes('daily') || lowerText.includes('yesterday') || lowerText.includes('today')) {
+  // Standup/Status Meeting
+  if (lowerText.includes('standup') || lowerText.includes('status') || 
+      lowerText.includes('yesterday') || lowerText.includes('today') || 
+      lowerText.includes('blocked') || lowerText.includes('impediment')) {
     return 'standup'
   }
   
-  if (lowerText.includes('planning') || lowerText.includes('sprint') || lowerText.includes('backlog') || lowerText.includes('story')) {
+  // Planning Meeting
+  if (lowerText.includes('planning') || lowerText.includes('sprint') || 
+      lowerText.includes('backlog') || lowerText.includes('epic') || 
+      lowerText.includes('story') || lowerText.includes('task')) {
     return 'planning'
   }
   
-  if (lowerText.includes('retro') || lowerText.includes('went well') || lowerText.includes('improve')) {
+  // Retrospective
+  if (lowerText.includes('retro') || lowerText.includes('retrospective') || 
+      lowerText.includes('went well') || lowerText.includes('improve') || 
+      lowerText.includes('start doing') || lowerText.includes('stop doing')) {
     return 'retrospective'
   }
   
-  if (lowerText.includes('decision') || lowerText.includes('decide') || lowerText.includes('approve') || lowerText.includes('vote')) {
+  // Decision Meeting
+  if (lowerText.includes('decision') || lowerText.includes('decide') || 
+      lowerText.includes('approve') || lowerText.includes('reject') || 
+      lowerText.includes('vote') || lowerText.includes('consensus')) {
     return 'decision'
   }
   
-  if (lowerText.includes('review') || lowerText.includes('demo') || lowerText.includes('presentation')) {
+  // Review Meeting
+  if (lowerText.includes('review') || lowerText.includes('demo') || 
+      lowerText.includes('presentation') || lowerText.includes('showcase')) {
     return 'review'
   }
   
-  if (lowerText.includes('problem') || lowerText.includes('issue') || lowerText.includes('bug') || lowerText.includes('fix')) {
+  // Problem Solving
+  if (lowerText.includes('problem') || lowerText.includes('issue') || 
+      lowerText.includes('bug') || lowerText.includes('fix') || 
+      lowerText.includes('troubleshoot') || lowerText.includes('debug')) {
     return 'problem-solving'
   }
   
   return 'general'
 }
 
-// Optimized temporal context extraction (lightweight)
-function extractTemporalContextOptimized(input: string): {
-  timeReferences: string[]
-  deadlines: string[]
-} {
-  const lowerText = input.toLowerCase()
-  
-  // Quick time reference check
-  const timeReferences = ['yesterday', 'today', 'tomorrow', 'this week', 'next week'].filter(ref => lowerText.includes(ref))
-  
-  // Simple deadline extraction
-  const deadlineMatches = input.match(/\b(?:due|deadline|by)\s+(?:tomorrow|next week|end of|monday|tuesday|wednesday|thursday|friday)\b/gi) || []
-  
-  return {
-    timeReferences,
-    deadlines: deadlineMatches
-  }
-}
-
-// Extract temporal context from meeting notes
-function extractTemporalContext(input: string): {
-  timeReferences: string[]
-  sequence: string[]
-  deadlines: string[]
-  timeframes: string[]
-} {
-  const lowerText = input.toLowerCase()
-  
-  // Extract time references
-  const timeReferences = [
-    'yesterday', 'today', 'tomorrow', 'this week', 'next week', 'last week',
-    'this month', 'next month', 'last month', 'this quarter', 'next quarter',
-    'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
-    'morning', 'afternoon', 'evening', 'night', 'early', 'late'
-  ].filter(ref => lowerText.includes(ref))
-  
-  // Extract sequence indicators
-  const sequence = [
-    'first', 'second', 'third', 'next', 'then', 'after', 'before', 'finally',
-    'initially', 'subsequently', 'meanwhile', 'concurrently', 'previously',
-    'step 1', 'step 2', 'phase 1', 'phase 2', 'stage 1', 'stage 2'
-  ].filter(seq => lowerText.includes(seq))
-  
-  // Extract deadlines and timeframes
-  const deadlinePatterns = [
-    /\b(?:due|deadline|by|until|before)\s+(?:tomorrow|next week|end of|monday|tuesday|wednesday|thursday|friday|saturday|sunday|january|february|march|april|may|june|july|august|september|october|november|december)\b/gi,
-    /\b(?:due|deadline|by|until|before)\s+\d{1,2}\/\d{1,2}\/\d{2,4}\b/gi,
-    /\b(?:due|deadline|by|until|before)\s+\d{1,2}\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)\b/gi
-  ]
-  
-  const deadlines: string[] = []
-  deadlinePatterns.forEach(pattern => {
-    const matches = input.match(pattern)
-    if (matches) {
-      deadlines.push(...matches)
-    }
-  })
-  
-  // Extract timeframes
-  const timeframes = [
-    'immediately', 'asap', 'urgent', 'priority', 'high priority',
-    'short term', 'long term', 'ongoing', 'continuous', 'recurring',
-    'one-time', 'temporary', 'permanent', 'indefinite'
-  ].filter(tf => lowerText.includes(tf))
-  
-  return {
-    timeReferences,
-    sequence,
-    deadlines,
-    timeframes
-  }
-}
-
 // Enhanced structured prompting for better AI outputs
-function createStructuredPrompt(input: string, meetingType: string, temporalContext?: any): string {
+function createStructuredPrompt(input: string, meetingType: string): string {
   const contextPrompts = {
-    'standup': {
-      focus: 'Daily standup meeting focusing on progress, blockers, and team coordination',
-      structure: [
-        'What each person accomplished since last meeting',
-        'What each person plans to work on next',
-        'Any blockers or impediments mentioned',
-        'Team coordination and dependencies',
-        'Key updates or announcements'
-      ],
-      extraction: 'Extract specific accomplishments, planned work, blockers, and team updates. Focus on actionable items and dependencies.'
-    },
-    'planning': {
-      focus: 'Sprint planning or project planning meeting focusing on requirements and deliverables',
-      structure: [
-        'User stories and requirements discussed',
-        'Acceptance criteria and definitions of done',
-        'Effort estimates and capacity planning',
-        'Sprint goals and deliverables',
-        'Dependencies and risks identified'
-      ],
-      extraction: 'Extract specific requirements, estimates, sprint goals, and planning decisions. Focus on what will be delivered and when.'
-    },
-    'retrospective': {
-      focus: 'Team retrospective focusing on process improvement and lessons learned',
-      structure: [
-        'What went well (successes and positive outcomes)',
-        'What didn\'t go well (challenges and pain points)',
-        'Lessons learned and insights gained',
-        'Action items for improvement',
-        'Team dynamics and collaboration insights'
-      ],
-      extraction: 'Extract specific successes, challenges, lessons learned, and improvement actions. Focus on actionable insights.'
-    },
-    'decision': {
-      focus: 'Decision-making meeting focusing on options, rationale, and outcomes',
-      structure: [
-        'Options or alternatives considered',
-        'Pros and cons of each option',
-        'Final decision made and rationale',
-        'Who made the decision and who was involved',
-        'Next steps and implementation plan'
-      ],
-      extraction: 'Extract specific options, decision rationale, stakeholders, and implementation steps. Focus on the decision process and outcomes.'
-    },
-    'review': {
-      focus: 'Review or demo meeting focusing on deliverables and feedback',
-      structure: [
-        'Deliverables or work products shown',
-        'Feedback received from stakeholders',
-        'Quality assessment and evaluation',
-        'Improvements and next iterations',
-        'Stakeholder reactions and approval status'
-      ],
-      extraction: 'Extract specific deliverables, feedback received, quality assessments, and improvement plans. Focus on what was reviewed and outcomes.'
-    },
-    'problem-solving': {
-      focus: 'Problem-solving meeting focusing on issue resolution and solutions',
-      structure: [
-        'Problem description and impact',
-        'Root cause analysis and investigation',
-        'Solutions considered and evaluated',
-        'Chosen solution and implementation plan',
-        'Prevention measures and monitoring'
-      ],
-      extraction: 'Extract specific problems, root causes, solutions considered, and resolution plans. Focus on the problem-solving process and outcomes.'
-    },
-    'general': {
-      focus: 'General meeting focusing on key discussions and outcomes',
-      structure: [
-        'Key decisions made and rationale',
-        'Important discussions and topics covered',
-        'Outcomes and results achieved',
-        'Next steps and action items',
-        'Critical information shared'
-      ],
-      extraction: 'Extract specific decisions, discussions, outcomes, and next steps. Focus on the most important information and outcomes.'
-    }
+    'standup': 'Focus on: What was accomplished, what\'s planned, blockers, and team coordination.',
+    'planning': 'Focus on: Requirements, user stories, acceptance criteria, estimates, and sprint goals.',
+    'retrospective': 'Focus on: What went well, what didn\'t, lessons learned, and improvement actions.',
+    'decision': 'Focus on: Options considered, pros/cons, final decision, rationale, and next steps.',
+    'review': 'Focus on: Deliverables shown, feedback received, quality assessment, and improvements.',
+    'problem-solving': 'Focus on: Problem description, root cause analysis, solutions considered, and resolution.',
+    'general': 'Focus on: Key decisions, important discussions, outcomes, and next steps.'
   }
   
-  const prompt = contextPrompts[meetingType as keyof typeof contextPrompts] || contextPrompts.general
-  
-  // Add temporal context to the prompt if available
-  let temporalContextText = ''
-  if (temporalContext && (temporalContext.timeReferences.length > 0 || temporalContext.deadlines.length > 0)) {
-    temporalContextText = `
+  return `Meeting Notes Analysis (${meetingType.toUpperCase()} Meeting):
 
-TEMPORAL CONTEXT:
-${temporalContext.timeReferences.length > 0 ? `Time References: ${temporalContext.timeReferences.join(', ')}` : ''}
-${temporalContext.deadlines.length > 0 ? `Deadlines: ${temporalContext.deadlines.join(', ')}` : ''}
-${temporalContext.sequence.length > 0 ? `Sequence Indicators: ${temporalContext.sequence.join(', ')}` : ''}
-${temporalContext.timeframes.length > 0 ? `Timeframes: ${temporalContext.timeframes.join(', ')}` : ''}`
-  }
+Context: Analyze the following meeting notes and extract key information.
+${contextPrompts[meetingType as keyof typeof contextPrompts]}
 
-  return `MEETING SUMMARY ANALYSIS
-Meeting Type: ${meetingType.toUpperCase()}
-Context: ${prompt.focus}${temporalContextText}
-
-ANALYSIS INSTRUCTIONS:
-${prompt.extraction}
-
-STRUCTURE TO EXTRACT:
-${prompt.structure.map((item, index) => `${index + 1}. ${item}`).join('\n')}
-
-MEETING NOTES:
+Meeting Notes:
 ${input}
 
-REQUIRED OUTPUT FORMAT:
-Provide a comprehensive summary that captures the essential information from this ${meetingType} meeting. Focus on:
-- Specific details and concrete information
-- Decisions made and rationale behind them
-- Action items and next steps with clear deadlines
-- Key outcomes and results
-- Important discussions and topics covered
-- Temporal sequence and timing of events
+Please provide a structured summary focusing on:
+1. Key decisions made
+2. Important discussions and outcomes
+3. Critical information shared
+4. Main topics covered
 
-Format as clear, specific bullet points that someone who wasn't at the meeting could understand and act upon.`
+Format your response as clear, actionable bullet points.`
 }
 
 // Better summary parsing with structured extraction
 function parseStructuredSummary(summaryText: string, originalInput: string): string[] {
-  // Clean and normalize the summary text
-  let cleanedText = summaryText.trim()
+  // First, try to split by common delimiters
+  let summary = summaryText.split(/[.!?]\s+/).map((item: string) => 
+    item.trim().replace(/[.!?]$/, '')
+  ).filter((item: string) => item.length > 10)
   
-  // Try to extract bullet points first (most common format)
-  let summary: string[] = []
-  
-  // Look for bullet point patterns
-  const bulletPatterns = [
-    /^[-•*]\s+(.+)$/gm,  // Standard bullet points
-    /^\d+\.\s+(.+)$/gm,  // Numbered lists
-    /^[▪▫]\s+(.+)$/gm,   // Unicode bullets
-    /^→\s+(.+)$/gm       // Arrow bullets
-  ]
-  
-  for (const pattern of bulletPatterns) {
-    const matches = cleanedText.match(pattern)
-    if (matches && matches.length > 0) {
-      summary = matches.map(match => {
-        const content = match.replace(/^[-•*▪▫→\d+\.]\s+/, '').trim()
-        return content
-      }).filter(item => item.length > 15)
-      
-      if (summary.length >= 2) break
-    }
-  }
-  
-  // If bullet points didn't work, try paragraph splitting
+  // If that doesn't work well, try bullet point patterns
   if (summary.length < 2) {
-    const paragraphs = cleanedText.split(/\n\s*\n/).map(p => p.trim()).filter(p => p.length > 20)
-    if (paragraphs.length >= 2) {
-      summary = paragraphs
-    }
+    summary = summaryText.split(/\n/).map((item: string) => 
+      item.trim().replace(/^[-•*]\s*/, '')
+    ).filter((item: string) => item.length > 10)
   }
   
-  // If paragraphs didn't work, try sentence splitting with better logic
+  // If still not good, try sentence splitting
   if (summary.length < 2) {
-    const sentences = cleanedText.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 20)
-    
-    // Prioritize sentences with important keywords
-    const importantKeywords = [
-      'decided', 'agreed', 'concluded', 'resolved', 'chose', 'selected',
-      'accomplished', 'completed', 'finished', 'delivered', 'achieved',
-      'blocked', 'impediment', 'issue', 'problem', 'challenge',
-      'next', 'action', 'todo', 'deadline', 'due', 'schedule',
-      'goal', 'objective', 'target', 'milestone', 'deliverable',
-      'discussed', 'reviewed', 'analyzed', 'evaluated', 'considered'
-    ]
-    
-    // Score sentences by importance
-    const scoredSentences = sentences.map(sentence => {
-      const lowerSentence = sentence.toLowerCase()
-      const score = importantKeywords.reduce((acc, keyword) => {
-        return acc + (lowerSentence.includes(keyword) ? 1 : 0)
-      }, 0)
-      return { sentence, score }
-    }).sort((a, b) => b.score - a.score)
-    
-    summary = scoredSentences.slice(0, 6).map(item => item.sentence)
+    summary = summaryText.split(/[.!?]/).map((item: string) => 
+      item.trim()
+    ).filter((item: string) => item.length > 15)
   }
   
-  // Final fallback: use original input analysis
+  // Fallback: use original input analysis
   if (summary.length < 2) {
     summary = extractKeyPoints(originalInput)
   }
   
-  // Clean up and validate final summary
-  summary = summary
-    .map(item => item.trim())
-    .filter(item => item.length > 15)
-    .slice(0, 6) // Allow up to 6 key points for better coverage
-  
-  return summary.length > 0 ? summary : ['No clear summary could be generated from the meeting notes']
-}
-
-// Organize summary into hierarchical structure
-function organizeHierarchicalSummary(summary: string[], input: string): string[] {
-  if (summary.length === 0) return summary
-  
-  // Define topic categories and their keywords
-  const topicCategories = {
-    decisions: ['decided', 'agreed', 'concluded', 'resolved', 'chose', 'selected', 'approved', 'rejected'],
-    actions: ['action', 'todo', 'task', 'next', 'deadline', 'due', 'schedule', 'assign', 'responsible'],
-    outcomes: ['completed', 'finished', 'delivered', 'achieved', 'accomplished', 'result', 'outcome'],
-    problems: ['blocked', 'impediment', 'issue', 'problem', 'challenge', 'bug', 'fix', 'troubleshoot'],
-    planning: ['planned', 'scheduled', 'goal', 'objective', 'target', 'milestone', 'deliverable'],
-    discussions: ['discussed', 'reviewed', 'analyzed', 'evaluated', 'considered', 'debated', 'presented']
-  }
-  
-  // Categorize summary points
-  const categorizedPoints = {
-    decisions: [] as string[],
-    actions: [] as string[],
-    outcomes: [] as string[],
-    problems: [] as string[],
-    planning: [] as string[],
-    discussions: [] as string[],
-    other: [] as string[]
-  }
-  
-  summary.forEach(point => {
-    const lowerPoint = point.toLowerCase()
-    let categorized = false
-    
-    Object.entries(topicCategories).forEach(([category, keywords]) => {
-      if (keywords.some(keyword => lowerPoint.includes(keyword))) {
-        categorizedPoints[category as keyof typeof categorizedPoints].push(point)
-        categorized = true
-      }
-    })
-    
-    if (!categorized) {
-      categorizedPoints.other.push(point)
-    }
-  })
-  
-  // Build hierarchical summary
-  const hierarchicalSummary: string[] = []
-  
-  // Add main topics with their sub-points
-  Object.entries(categorizedPoints).forEach(([category, points]) => {
-    if (points.length > 0) {
-      const categoryTitle = category.charAt(0).toUpperCase() + category.slice(1).replace('-', ' ')
-      hierarchicalSummary.push(`📋 ${categoryTitle}:`)
-      points.forEach(point => {
-        hierarchicalSummary.push(`  • ${point}`)
-      })
-      hierarchicalSummary.push('') // Add spacing
-    }
-  })
-  
-  // If no categorization worked, return original summary
-  if (hierarchicalSummary.length === 0) {
-    return summary
-  }
-  
-  return hierarchicalSummary
-}
-
-// Optimized hierarchical summary organization (faster)
-function organizeHierarchicalSummaryOptimized(summary: string[]): string[] {
-  if (summary.length === 0) return summary
-  
-  // Quick categorization with minimal processing
-  const decisions: string[] = []
-  const actions: string[] = []
-  const outcomes: string[] = []
-  const other: string[] = []
-  
-  summary.forEach(point => {
-    const lowerPoint = point.toLowerCase()
-    if (lowerPoint.includes('decided') || lowerPoint.includes('agreed') || lowerPoint.includes('chose')) {
-      decisions.push(point)
-    } else if (lowerPoint.includes('action') || lowerPoint.includes('todo') || lowerPoint.includes('next')) {
-      actions.push(point)
-    } else if (lowerPoint.includes('completed') || lowerPoint.includes('finished') || lowerPoint.includes('delivered')) {
-      outcomes.push(point)
-    } else {
-      other.push(point)
-    }
-  })
-  
-  // Build simple hierarchical structure
-  const hierarchicalSummary: string[] = []
-  
-  if (decisions.length > 0) {
-    hierarchicalSummary.push('📋 Decisions:')
-    decisions.forEach(point => hierarchicalSummary.push(`  • ${point}`))
-    hierarchicalSummary.push('')
-  }
-  
-  if (actions.length > 0) {
-    hierarchicalSummary.push('📋 Actions:')
-    actions.forEach(point => hierarchicalSummary.push(`  • ${point}`))
-    hierarchicalSummary.push('')
-  }
-  
-  if (outcomes.length > 0) {
-    hierarchicalSummary.push('📋 Outcomes:')
-    outcomes.forEach(point => hierarchicalSummary.push(`  • ${point}`))
-    hierarchicalSummary.push('')
-  }
-  
-  if (other.length > 0) {
-    hierarchicalSummary.push('📋 Other:')
-    other.forEach(point => hierarchicalSummary.push(`  • ${point}`))
-  }
-  
-  return hierarchicalSummary.length > 0 ? hierarchicalSummary : summary
+  return summary.slice(0, 5) // Limit to 5 key points
 }
 
 // Extract key points from original input as fallback
@@ -760,86 +337,32 @@ function extractKeyPoints(text: string): string[] {
   const sentences = text.split(/[.!?]/).filter(s => s.trim().length > 20)
   const keyPoints: string[] = []
   
-  // Enhanced keyword categories with different weights
-  const keywordCategories = {
-    decisions: ['decided', 'agreed', 'concluded', 'resolved', 'chose', 'selected', 'approved', 'rejected'],
-    actions: ['action', 'todo', 'task', 'next', 'deadline', 'due', 'schedule', 'assign', 'responsible'],
-    outcomes: ['completed', 'finished', 'delivered', 'achieved', 'accomplished', 'result', 'outcome'],
-    problems: ['blocked', 'impediment', 'issue', 'problem', 'challenge', 'bug', 'fix', 'troubleshoot'],
-    planning: ['planned', 'scheduled', 'goal', 'objective', 'target', 'milestone', 'deliverable'],
-    discussions: ['discussed', 'reviewed', 'analyzed', 'evaluated', 'considered', 'debated', 'presented']
+  // Look for sentences with important keywords
+  const importantKeywords = ['decided', 'agreed', 'discussed', 'reviewed', 'planned', 'scheduled', 'completed', 'blocked', 'issue', 'problem', 'solution', 'next', 'action', 'deadline', 'goal', 'objective']
+  
+  for (const sentence of sentences) {
+    const lowerSentence = sentence.toLowerCase()
+    if (importantKeywords.some(keyword => lowerSentence.includes(keyword))) {
+      keyPoints.push(sentence.trim())
+    }
   }
   
-  // Score sentences by importance and category
-  const scoredSentences = sentences.map(sentence => {
-    const lowerSentence = sentence.toLowerCase()
-    let score = 0
-    let categories: string[] = []
-    
-    // Calculate score based on keyword categories
-    Object.entries(keywordCategories).forEach(([category, keywords]) => {
-      const categoryScore = keywords.reduce((acc, keyword) => {
-        return acc + (lowerSentence.includes(keyword) ? 1 : 0)
-      }, 0)
-      
-      if (categoryScore > 0) {
-        score += categoryScore * (category === 'decisions' ? 3 : category === 'actions' ? 2.5 : 2)
-        categories.push(category)
-      }
-    })
-    
-    // Bonus for sentences with multiple important elements
-    if (lowerSentence.includes('decided') && lowerSentence.includes('because')) score += 2
-    if (lowerSentence.includes('action') && lowerSentence.includes('by')) score += 2
-    if (lowerSentence.includes('deadline') || lowerSentence.includes('due')) score += 1.5
-    
-    return { sentence: sentence.trim(), score, categories }
-  })
-  
-  // Sort by score and take the most important ones
-  const topSentences = scoredSentences
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 6)
-    .map(item => item.sentence)
-  
-  return topSentences.length > 0 ? topSentences : ['No clear key points could be extracted from the meeting notes']
+  return keyPoints.slice(0, 5)
 }
 
 // Calculate quality metrics for the summary
 function calculateQualityMetrics(summary: string[], actionItems: string[], sopCheck: string[], input: string) {
-  // Completeness: How well the summary covers the input content
+  // Completeness: How well the summary covers the input
   const inputLength = input.length
   const summaryLength = summary.join(' ').length
+  const completeness = Math.min(summaryLength / (inputLength * 0.3), 1) // Target 30% compression
   
-  // Better completeness calculation based on content coverage
-  const inputWords = input.toLowerCase().split(/\s+/).filter(word => word.length > 3)
-  const summaryWords = summary.join(' ').toLowerCase().split(/\s+/).filter(word => word.length > 3)
-  
-  // Calculate word overlap as a measure of content coverage
-  const uniqueInputWords = new Set(inputWords)
-  const uniqueSummaryWords = new Set(summaryWords)
-  const overlap = Array.from(uniqueSummaryWords).filter(word => uniqueInputWords.has(word)).length
-  const completeness = Math.min(overlap / Math.max(uniqueInputWords.size * 0.3, 1), 1)
-  
-  // Clarity: Based on sentence structure, readability, and coherence
+  // Clarity: Based on sentence structure and readability
   const avgSentenceLength = summary.reduce((acc, item) => acc + item.length, 0) / summary.length
-  const sentenceVariety = new Set(summary.map(s => s.length)).size / summary.length
+  const clarity = Math.max(0, 1 - (avgSentenceLength - 50) / 100) // Optimal around 50 chars
   
-  // Optimal sentence length is 40-80 characters with good variety
-  const lengthScore = Math.max(0, 1 - Math.abs(avgSentenceLength - 60) / 40)
-  const varietyScore = Math.min(sentenceVariety, 1)
-  const clarity = (lengthScore * 0.7 + varietyScore * 0.3)
-  
-  // Actionability: Based on action items, SOP compliance, and decision clarity
-  const actionItemScore = Math.min(actionItems.length / 3, 1) // Target 3 action items
-  const sopScore = sopCheck.filter(item => item.includes('✅')).length / sopCheck.length
-  const decisionScore = summary.some(s => 
-    s.toLowerCase().includes('decided') || 
-    s.toLowerCase().includes('agreed') || 
-    s.toLowerCase().includes('concluded')
-  ) ? 0.5 : 0
-  
-  const actionability = (actionItemScore * 0.4 + sopScore * 0.4 + decisionScore * 0.2)
+  // Actionability: Based on action items and SOP compliance
+  const actionability = (actionItems.length * 0.2) + (sopCheck.filter(item => item.includes('✅')).length * 0.1)
   
   return {
     completeness: Math.round(completeness * 100) / 100,
@@ -857,59 +380,6 @@ function calculateConfidenceScore(qualityMetrics: { completeness: number; clarit
     qualityMetrics.actionability * weights.actionability
   )
   return Math.round(score * 100) / 100
-}
-
-// Test function to validate improvements
-export async function testSummaryImprovements(): Promise<void> {
-  const testCases = [
-    {
-      name: 'Standup Meeting',
-      input: 'Daily standup: John completed the user authentication feature yesterday. Sarah is working on the database migration today. Mike is blocked on the API integration due to missing documentation. Tomorrow we need to review the sprint progress and plan next week\'s tasks.',
-      expectedType: 'standup'
-    },
-    {
-      name: 'Decision Meeting',
-      input: 'We discussed three options for the payment system: Stripe, PayPal, and Square. After reviewing pros and cons, we decided to go with Stripe because of better documentation and lower fees. The implementation deadline is next Friday.',
-      expectedType: 'decision'
-    },
-    {
-      name: 'Planning Meeting',
-      input: 'Sprint planning session: We estimated 5 user stories for the next sprint. The login feature is high priority and needs to be completed by end of week. We assigned John to the frontend work and Sarah to the backend API development.',
-      expectedType: 'planning'
-    }
-  ]
-  
-  console.log('🧪 Testing Summary Improvements...')
-  
-  for (const testCase of testCases) {
-    try {
-      const result = await summarizeNotes(testCase.input)
-      console.log(`\n✅ ${testCase.name}:`)
-      console.log(`   Meeting Type: ${result.meetingType} (expected: ${testCase.expectedType})`)
-      console.log(`   Summary Points: ${result.summary.length}`)
-      console.log(`   Confidence Score: ${result.confidenceScore}`)
-      console.log(`   Quality Metrics:`, result.qualityMetrics)
-      
-      // Validate meeting type detection
-      if (result.meetingType === testCase.expectedType) {
-        console.log(`   ✅ Meeting type detection: PASS`)
-      } else {
-        console.log(`   ❌ Meeting type detection: FAIL (got ${result.meetingType}, expected ${testCase.expectedType})`)
-      }
-      
-      // Validate summary quality
-      if (result.summary.length >= 2 && result.confidenceScore && result.confidenceScore > 0.5) {
-        console.log(`   ✅ Summary quality: PASS`)
-      } else {
-        console.log(`   ❌ Summary quality: FAIL`)
-      }
-      
-    } catch (error) {
-      console.log(`   ❌ ${testCase.name}: ERROR - ${error}`)
-    }
-  }
-  
-  console.log('\n🎉 Summary improvement testing completed!')
 }
 
 // Demo mode function that works without API keys
