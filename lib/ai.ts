@@ -20,11 +20,11 @@ export async function summarizeNotes(input: string): Promise<SummaryOutput> {
       return await generateDemoOutput(input)
     }
 
-    // Detect meeting type for context-aware processing
-    const meetingType = detectMeetingType(input)
+    // Detect meeting type for context-aware processing (optimized)
+    const meetingType = detectMeetingTypeOptimized(input)
     
-    // Extract temporal context for better summarization
-    const temporalContext = extractTemporalContext(input)
+    // Extract temporal context for better summarization (lightweight)
+    const temporalContext = extractTemporalContextOptimized(input)
     
     // Enhanced structured prompting for better AI outputs
     const structuredPrompt = createStructuredPrompt(input, meetingType, temporalContext)
@@ -41,12 +41,11 @@ export async function summarizeNotes(input: string): Promise<SummaryOutput> {
         body: JSON.stringify({
           inputs: structuredPrompt,
           parameters: {
-            max_length: 400,
-            min_length: 100,
+            max_length: 300,
+            min_length: 80,
             do_sample: true,
-            temperature: 0.2,
-            top_p: 0.9,
-            repetition_penalty: 1.1
+            temperature: 0.3,
+            top_p: 0.95
           }
         }),
       }
@@ -72,8 +71,8 @@ export async function summarizeNotes(input: string): Promise<SummaryOutput> {
     // Better summary parsing with structured extraction
     const summary = parseStructuredSummary(summaryText, input)
     
-    // Organize summary into hierarchical structure
-    const hierarchicalSummary = organizeHierarchicalSummary(summary, input)
+    // Organize summary into hierarchical structure (optimized)
+    const hierarchicalSummary = organizeHierarchicalSummaryOptimized(summary)
 
     // Calculate quality metrics
     const qualityMetrics = calculateQualityMetrics(summary, actionItems, sopCheck, input)
@@ -336,6 +335,57 @@ function detectMeetingType(input: string): string {
     .find(([_, score]) => score === maxScore)?.[0] || 'general'
   
   return detectedType
+}
+
+// Optimized meeting type detection (faster)
+function detectMeetingTypeOptimized(input: string): string {
+  const lowerText = input.toLowerCase()
+  
+  // Quick keyword checks with early returns
+  if (lowerText.includes('standup') || lowerText.includes('daily') || lowerText.includes('yesterday') || lowerText.includes('today')) {
+    return 'standup'
+  }
+  
+  if (lowerText.includes('planning') || lowerText.includes('sprint') || lowerText.includes('backlog') || lowerText.includes('story')) {
+    return 'planning'
+  }
+  
+  if (lowerText.includes('retro') || lowerText.includes('went well') || lowerText.includes('improve')) {
+    return 'retrospective'
+  }
+  
+  if (lowerText.includes('decision') || lowerText.includes('decide') || lowerText.includes('approve') || lowerText.includes('vote')) {
+    return 'decision'
+  }
+  
+  if (lowerText.includes('review') || lowerText.includes('demo') || lowerText.includes('presentation')) {
+    return 'review'
+  }
+  
+  if (lowerText.includes('problem') || lowerText.includes('issue') || lowerText.includes('bug') || lowerText.includes('fix')) {
+    return 'problem-solving'
+  }
+  
+  return 'general'
+}
+
+// Optimized temporal context extraction (lightweight)
+function extractTemporalContextOptimized(input: string): {
+  timeReferences: string[]
+  deadlines: string[]
+} {
+  const lowerText = input.toLowerCase()
+  
+  // Quick time reference check
+  const timeReferences = ['yesterday', 'today', 'tomorrow', 'this week', 'next week'].filter(ref => lowerText.includes(ref))
+  
+  // Simple deadline extraction
+  const deadlineMatches = input.match(/\b(?:due|deadline|by)\s+(?:tomorrow|next week|end of|monday|tuesday|wednesday|thursday|friday)\b/gi) || []
+  
+  return {
+    timeReferences,
+    deadlines: deadlineMatches
+  }
 }
 
 // Extract temporal context from meeting notes
@@ -651,6 +701,58 @@ function organizeHierarchicalSummary(summary: string[], input: string): string[]
   }
   
   return hierarchicalSummary
+}
+
+// Optimized hierarchical summary organization (faster)
+function organizeHierarchicalSummaryOptimized(summary: string[]): string[] {
+  if (summary.length === 0) return summary
+  
+  // Quick categorization with minimal processing
+  const decisions: string[] = []
+  const actions: string[] = []
+  const outcomes: string[] = []
+  const other: string[] = []
+  
+  summary.forEach(point => {
+    const lowerPoint = point.toLowerCase()
+    if (lowerPoint.includes('decided') || lowerPoint.includes('agreed') || lowerPoint.includes('chose')) {
+      decisions.push(point)
+    } else if (lowerPoint.includes('action') || lowerPoint.includes('todo') || lowerPoint.includes('next')) {
+      actions.push(point)
+    } else if (lowerPoint.includes('completed') || lowerPoint.includes('finished') || lowerPoint.includes('delivered')) {
+      outcomes.push(point)
+    } else {
+      other.push(point)
+    }
+  })
+  
+  // Build simple hierarchical structure
+  const hierarchicalSummary: string[] = []
+  
+  if (decisions.length > 0) {
+    hierarchicalSummary.push('📋 Decisions:')
+    decisions.forEach(point => hierarchicalSummary.push(`  • ${point}`))
+    hierarchicalSummary.push('')
+  }
+  
+  if (actions.length > 0) {
+    hierarchicalSummary.push('📋 Actions:')
+    actions.forEach(point => hierarchicalSummary.push(`  • ${point}`))
+    hierarchicalSummary.push('')
+  }
+  
+  if (outcomes.length > 0) {
+    hierarchicalSummary.push('📋 Outcomes:')
+    outcomes.forEach(point => hierarchicalSummary.push(`  • ${point}`))
+    hierarchicalSummary.push('')
+  }
+  
+  if (other.length > 0) {
+    hierarchicalSummary.push('📋 Other:')
+    other.forEach(point => hierarchicalSummary.push(`  • ${point}`))
+  }
+  
+  return hierarchicalSummary.length > 0 ? hierarchicalSummary : summary
 }
 
 // Extract key points from original input as fallback

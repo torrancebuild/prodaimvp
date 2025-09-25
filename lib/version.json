@@ -1,8 +1,8 @@
 {
-  "commitHash": "23143bac637acb0aab78707651bf531ca93ba617",
-  "shortHash": "23143ba",
+  "commitHash": "0cf7572fa4b10d88c7a7706f923faf43a275d306",
+  "shortHash": "0cf7572",
   "branch": "staging",
-  "lastCommit": "feat: enhance AI summarization with intelligent prompting and hierarchical structure",
-  "buildTime": "2025-09-25T14:53:59.203Z",
+  "lastCommit": "fix: resolve TypeScript compilation errors",
+  "buildTime": "2025-09-25T14:56:32.983Z",
   "version": "1.0.0"
 }
