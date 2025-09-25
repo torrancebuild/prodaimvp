@@ -181,11 +181,65 @@ The app works without API keys in demo mode:
 
 ## 🚀 Deployment
 
+### Branch Strategy
+
+This project uses a **two-branch deployment strategy**:
+
+- **`main` branch** → Production deployment (`https://prodaimvp.vercel.app`)
+- **`staging` branch** → Preview deployment (unique URL per deployment)
+
 ### Vercel (Recommended)
 
 1. Connect your GitHub repository to Vercel
 2. Add environment variables in Vercel dashboard
-3. Deploy automatically on push to main branch
+3. **Automatic deployments**:
+   - Push to `main` → Production deployment
+   - Push to `staging` → Preview deployment with unique URL
+   - Push to any feature branch → Preview deployment
+
+### Development Workflow
+
+#### For Staging/UAT Testing:
+```bash
+# Work on staging branch
+git checkout staging
+# ... make changes ...
+git add .
+git commit -m "Your changes"
+git push origin staging
+# → Vercel automatically creates a preview deployment
+```
+
+#### For Production Release:
+```bash
+# Merge staging to main
+git checkout main
+git merge staging
+git push origin main
+# → Vercel deploys to production
+```
+
+#### For Feature Development:
+```bash
+# Create feature branch from staging
+git checkout staging
+git checkout -b feature/your-feature-name
+# ... make changes ...
+git push origin feature/your-feature-name
+# → Create PR: feature/your-feature-name → staging
+```
+
+### Deployment URLs
+
+- **Production**: `https://prodaimvp.vercel.app` (main branch)
+- **Staging**: `https://prodaimvp-git-staging-[hash].vercel.app` (staging branch)
+- **Feature Previews**: `https://prodaimvp-git-[branch-name]-[hash].vercel.app`
+
+### Finding Preview URLs
+
+1. **Vercel Dashboard**: Visit [vercel.com/dashboard](https://vercel.com/dashboard) → Your Project → Deployments
+2. **GitHub**: Check deployment status checks on your commits
+3. **Email Notifications**: Vercel sends preview URLs via email (if configured)
 
 ### Other Platforms
 
@@ -240,11 +294,32 @@ DEBUG=true
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+### Development Process
+
+1. **Fork the repository** (if contributing externally)
+2. **Create a feature branch** from `staging`:
+   ```bash
+   git checkout staging
+   git checkout -b feature/your-feature-name
+   ```
+3. **Make your changes** and test locally
+4. **Test on staging** before production:
+   ```bash
+   git checkout staging
+   git merge feature/your-feature-name
+   git push origin staging
+   # Test on Vercel preview URL
+   ```
+5. **Submit a pull request**:
+   - Feature branch → `staging` (for testing)
+   - `staging` → `main` (for production release)
+
+### Branch Guidelines
+
+- **`main`**: Production-ready code only
+- **`staging`**: Integration branch for testing
+- **`feature/*`**: Individual feature development
+- **`hotfix/*`**: Emergency production fixes (merge directly to main)
 
 ## 📄 License
 

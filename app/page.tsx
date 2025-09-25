@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { summarizeNotes } from '@/lib/ai'
 import { saveNote, getNotes } from '@/lib/supabase'
 
 interface Note {
@@ -17,6 +16,13 @@ interface SummaryOutput {
   actionItems: string[]
   sopCheck: string[]
   probingQuestions: string[]
+  meetingType?: string
+  confidenceScore?: number
+  qualityMetrics?: {
+    completeness: number
+    clarity: number
+    actionability: number
+  }
 }
 
 export default function Home() {
@@ -73,7 +79,21 @@ export default function Home() {
     setInputError('')
     
     try {
-      const result = await summarizeNotes(input)
+      // Call the API route instead of the direct function
+      const response = await fetch('/api/summarize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ input }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to process notes')
+      }
+
+      const result = await response.json()
       setOutput(result)
       
       // Save to history
@@ -194,7 +214,14 @@ export default function Home() {
       {output && (
         <div className="mt-8">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">Generated Summary</h2>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Generated Summary</h2>
+              {output.meetingType && (
+                <p className="text-sm text-gray-600 mt-1">
+                  Meeting Type: <span className="font-medium capitalize">{output.meetingType.replace('-', ' ')}</span>
+                </p>
+              )}
+            </div>
             <button
               onClick={copyToClipboard}
               className="btn-secondary"
@@ -202,6 +229,31 @@ export default function Home() {
               Copy to Clipboard
             </button>
           </div>
+
+          {/* Quality Metrics */}
+          {output.qualityMetrics && output.confidenceScore && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <h3 className="font-medium text-blue-900 mb-3">Quality Assessment</h3>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">{Math.round(output.confidenceScore * 100)}%</div>
+                  <div className="text-sm text-blue-800">Overall Confidence</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-600">{Math.round(output.qualityMetrics.completeness * 100)}%</div>
+                  <div className="text-sm text-green-800">Completeness</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-purple-600">{Math.round(output.qualityMetrics.clarity * 100)}%</div>
+                  <div className="text-sm text-purple-800">Clarity</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-orange-600">{Math.round(output.qualityMetrics.actionability * 100)}%</div>
+                  <div className="text-sm text-orange-800">Actionability</div>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="output-section">
             <h3 className="font-medium text-gray-900 mb-2">Summary</h3>
