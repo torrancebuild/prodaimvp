@@ -672,7 +672,7 @@ function extractKeyPoints(text: string): string[] {
   const scoredSentences = sentences.map(sentence => {
     const lowerSentence = sentence.toLowerCase()
     let score = 0
-    let categories = []
+    let categories: string[] = []
     
     // Calculate score based on keyword categories
     Object.entries(keywordCategories).forEach(([category, keywords]) => {
@@ -716,7 +716,7 @@ function calculateQualityMetrics(summary: string[], actionItems: string[], sopCh
   // Calculate word overlap as a measure of content coverage
   const uniqueInputWords = new Set(inputWords)
   const uniqueSummaryWords = new Set(summaryWords)
-  const overlap = [...uniqueSummaryWords].filter(word => uniqueInputWords.has(word)).length
+  const overlap = Array.from(uniqueSummaryWords).filter(word => uniqueInputWords.has(word)).length
   const completeness = Math.min(overlap / Math.max(uniqueInputWords.size * 0.3, 1), 1)
   
   // Clarity: Based on sentence structure, readability, and coherence
