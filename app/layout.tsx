@@ -30,7 +30,10 @@ export default function RootLayout({
                   v{process.env.NODE_ENV === 'production' ? '1.0.0' : 'dev'}
                 </div>
                 <div className="text-xs text-gray-400 mt-1">
-                  {process.env.NODE_ENV === 'production' ? '64e3354' : 'local'}
+                  {process.env.NODE_ENV === 'production' ? 'bb46ce2' : 'local'}
+                </div>
+                <div className="text-xs text-gray-300 mt-1">
+                  {process.env.NODE_ENV === 'production' ? 'hover tooltips' : 'latest'}
                 </div>
               </div>
             </div>
