@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { saveNote, getNotes } from '@/lib/supabase'
+import ProcessingProgress from './components/ProcessingProgress'
 
 interface Note {
   id: string
@@ -196,6 +197,8 @@ export default function Home() {
         >
           {loading ? 'Processing...' : 'Summarize Notes'}
         </button>
+        
+        <ProcessingProgress isVisible={loading} />
         
         {inputError && (
           <p className="text-sm text-red-600 mt-2">

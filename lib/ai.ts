@@ -344,6 +344,6 @@ function generateDemoOutput(input: string): Promise<SummaryOutput> {
           probingQuestions: ['Demo probing question']
         })
       }
-    }, 1000) // 1 second delay to simulate API call
+    }, 3500) // 3.5 second delay to simulate realistic API call
   })
 }
