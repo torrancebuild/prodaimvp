@@ -66,10 +66,10 @@ export async function saveNote(title: string, input: string, output: string): Pr
       .insert([
         {
           meeting_id: meetingData.id,
-          summary: JSON.stringify(outputData.summary),
-          action_items: outputData.actionItems,
-          sop_gaps: outputData.sopCheck,
-          probing_questions: [], // Required field - empty array for now
+          summary: JSON.stringify(outputData.keyDiscussionPoints),
+          action_items: outputData.nextSteps,
+          sop_gaps: outputData.sopChecks,
+          probing_questions: outputData.openQuestions,
         }
       ])
 
@@ -118,10 +118,10 @@ export async function getNotes(): Promise<Note[]> {
       title: meeting.title,
       input: meeting.raw_notes,
       output: JSON.stringify({
-        summary: meeting.meeting_outputs?.[0]?.summary ? JSON.parse(meeting.meeting_outputs[0].summary) : [],
-        actionItems: meeting.meeting_outputs?.[0]?.action_items || [],
-        sopCheck: meeting.meeting_outputs?.[0]?.sop_gaps || [],
-        probingQuestions: meeting.meeting_outputs?.[0]?.probing_questions || []
+        keyDiscussionPoints: meeting.meeting_outputs?.[0]?.summary ? JSON.parse(meeting.meeting_outputs[0].summary) : [],
+        nextSteps: meeting.meeting_outputs?.[0]?.action_items || [],
+        sopChecks: meeting.meeting_outputs?.[0]?.sop_gaps || [],
+        openQuestions: meeting.meeting_outputs?.[0]?.probing_questions || []
       }),
       created_at: meeting.created_at
     }))
