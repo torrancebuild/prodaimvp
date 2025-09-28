@@ -1,8 +1,8 @@
 {
-  "commitHash": "b92761a0b9e578a35993552406a8e2f24697c937",
-  "shortHash": "b92761a",
+  "commitHash": "5731f9d94feddfc8e7e79b4e29d0a848bbac1a53",
+  "shortHash": "5731f9d",
   "branch": "staging",
-  "lastCommit": "Fix API route timeout issue and clean up unreachable code",
-  "buildTime": "2025-09-25T15:45:56.460Z",
+  "lastCommit": "Add MVP PRD outline",
+  "buildTime": "2025-09-28T08:49:51.873Z",
   "version": "1.0.0"
 }

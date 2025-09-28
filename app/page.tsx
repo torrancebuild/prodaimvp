@@ -13,10 +13,10 @@ interface Note {
 }
 
 interface SummaryOutput {
-  summary: string[]
-  actionItems: string[]
-  sopCheck: string[]
-  probingQuestions: string[]
+  keyDiscussionPoints: string[]
+  nextSteps: string[]
+  sopChecks: string[]
+  openQuestions: string[]
   meetingType?: string
 }
 
@@ -109,7 +109,7 @@ export default function Home() {
   const copyToClipboard = () => {
     if (!output) return
     
-    const text = `SUMMARY:\n${output.summary.map(item => `• ${item}`).join('\n')}\n\nACTION ITEMS:\n${output.actionItems.map(item => `• ${item}`).join('\n')}\n\nSOP CHECK:\n${output.sopCheck.map(item => `• ${item}`).join('\n')}\n\nPROBING QUESTIONS:\n${output.probingQuestions.map(question => `• ${question}`).join('\n')}`
+    const text = `KEY DISCUSSION POINTS:\n${output.keyDiscussionPoints.map(item => `• ${item}`).join('\n')}\n\nNEXT STEPS:\n${output.nextSteps.map(item => `• ${item}`).join('\n')}\n\nSOP CHECKS:\n${output.sopChecks.map(item => `• ${item}`).join('\n')}\n\nOPEN QUESTIONS:\n${output.openQuestions.map(question => `• ${question}`).join('\n')}`
     navigator.clipboard.writeText(text)
   }
 
@@ -228,27 +228,27 @@ export default function Home() {
           </div>
 
           <div className="output-section">
-            <h3 className="font-medium text-gray-900 mb-2">Summary</h3>
+            <h3 className="font-medium text-gray-900 mb-2">Key Discussion Points</h3>
             <ul className="list-disc list-inside space-y-1">
-              {output.summary.map((item, index) => (
+              {output.keyDiscussionPoints.map((item, index) => (
                 <li key={index} className="text-gray-700">{item}</li>
               ))}
             </ul>
           </div>
 
           <div className="output-section">
-            <h3 className="font-medium text-gray-900 mb-2">Action Items</h3>
+            <h3 className="font-medium text-gray-900 mb-2">Next Steps</h3>
             <ul className="list-disc list-inside space-y-1">
-              {output.actionItems.map((item, index) => (
+              {output.nextSteps.map((item, index) => (
                 <li key={index} className="text-gray-700">{item}</li>
               ))}
             </ul>
           </div>
 
           <div className="output-section">
-            <h3 className="font-medium text-gray-900 mb-2">SOP Check</h3>
+            <h3 className="font-medium text-gray-900 mb-2">SOP Checks</h3>
             <ul className="list-disc list-inside space-y-1">
-              {output.sopCheck.map((item, index) => (
+              {output.sopChecks.map((item, index) => (
                 <li key={index} className={item.includes('⚠️') ? 'sop-warning' : 'text-gray-700'}>
                   {item}
                 </li>
@@ -257,9 +257,9 @@ export default function Home() {
           </div>
 
           <div className="output-section">
-            <h3 className="font-medium text-gray-900 mb-2">Probing Questions</h3>
+            <h3 className="font-medium text-gray-900 mb-2">Open Questions</h3>
             <ul className="list-disc list-inside space-y-1">
-              {output.probingQuestions.map((question, index) => (
+              {output.openQuestions.map((question, index) => (
                 <li key={index} className="text-gray-700">{question}</li>
               ))}
             </ul>

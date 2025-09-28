@@ -1,8 +1,8 @@
 export interface SummaryOutput {
-  summary: string[]
-  actionItems: string[]
-  sopCheck: string[]
-  probingQuestions: string[]
+  keyDiscussionPoints: string[]
+  nextSteps: string[]
+  sopChecks: string[]
+  openQuestions: string[]
   meetingType?: string
 }
 
@@ -22,15 +22,12 @@ export async function summarizeNotes(input: string): Promise<SummaryOutput> {
 
   try {
     const summaryText = await fetchClaudeSummary(input)
-    const summary = parseStructuredSummary(summaryText, input)
-    const actionItems = extractActionItems(input, meetingType)
-    const sopCheck = performSOPCheck(input, meetingType)
-    const probingQuestions = generateProbingQuestions(input, meetingType)
+    const sections = parseStructuredSummary(summaryText, input)
     return {
-      summary,
-      actionItems,
-      sopCheck,
-      probingQuestions,
+      keyDiscussionPoints: sections.keyDiscussionPoints,
+      nextSteps: sections.nextSteps,
+      sopChecks: sections.sopChecks,
+      openQuestions: sections.openQuestions,
       meetingType,
     }
   } catch (error) {
@@ -71,11 +68,11 @@ async function fetchClaudeSummary(input: string): Promise<string> {
       model: CLAUDE_MODEL,
       max_tokens: 600,
       temperature: 0.2,
-      system: 'You are an AI assistant that converts messy meeting notes into concise, structured summaries with headings for key discussion points and next steps. Use short bullet points.',
+      system: 'You are an AI assistant that converts messy meeting notes into structured summaries. Always respond with exactly 4 sections in this format:\n\n## Key Discussion Points\n• [2-5 bullet points]\n\n## Next Steps\n• [2-5 bullet points with clear owners]\n\n## SOP Checks\n• [2-5 bullet points with ✅ for good practices, ⚠️ for gaps]\n\n## Open Questions\n• [1-3 bullet points highlighting areas needing clarification]',
       messages: [
         {
           role: 'user',
-          content: `Meeting Notes:\n${input}\n\nProduce two sections:\n1. Key Discussion Points (bullets)\n2. Next Steps & Owners (bullets)`
+          content: `Meeting Notes:\n${input}\n\nConvert these notes into the 4-section format above.`
         }
       ]
     })
@@ -173,8 +170,7 @@ function performSOPCheck(text: string, meetingType: string = 'general'): string[
     /\b(?:achieve|accomplish|deliver|complete|finish)\b/i
   ]
   const hasGoals = goalPatterns.some(pattern => pattern.test(text))
-  const goalConfidence = hasGoals ? 'High' : 'Low'
-  sopResults.push(hasGoals ? `✅ Goals covered (${goalConfidence} confidence)` : '⚠️ Goals missing - Add specific objectives')
+  sopResults.push(hasGoals ? '✅ Goals covered' : '⚠️ Goals missing - Add specific objectives')
   
   // Enhanced Decisions Detection
   const decisionPatterns = [
@@ -184,8 +180,7 @@ function performSOPCheck(text: string, meetingType: string = 'general'): string[
     /\b(?:final|definitive|conclusive|settled)\b/i
   ]
   const hasDecisions = decisionPatterns.some(pattern => pattern.test(text))
-  const decisionConfidence = hasDecisions ? 'High' : 'Low'
-  sopResults.push(hasDecisions ? `✅ Decisions documented (${decisionConfidence} confidence)` : '⚠️ Decisions missing - Document what was decided')
+  sopResults.push(hasDecisions ? '✅ Decisions documented' : '⚠️ Decisions missing - Document what was decided')
   
   // Enhanced Next Steps Detection
   const nextStepPatterns = [
@@ -195,8 +190,7 @@ function performSOPCheck(text: string, meetingType: string = 'general'): string[
     /\b(?:milestone|deliverable|outcome|result)\b/i
   ]
   const hasNextSteps = nextStepPatterns.some(pattern => pattern.test(text))
-  const nextStepConfidence = hasNextSteps ? 'High' : 'Low'
-  sopResults.push(hasNextSteps ? `✅ Next steps defined (${nextStepConfidence} confidence)` : '⚠️ Next steps missing - Define clear follow-up actions')
+  sopResults.push(hasNextSteps ? '✅ Next steps defined' : '⚠️ Next steps missing - Define clear follow-up actions')
   
   // Additional SOP Checks
   const hasParticipants = /\b(?:attendees|participants|team|members|present|absent)\b/i.test(text)
@@ -322,30 +316,87 @@ Please provide a structured summary focusing on:
 Format your response as clear, actionable bullet points.`
 }
 
-// Better summary parsing with structured extraction
-function parseStructuredSummary(summaryText: string, originalInput: string): string[] {
-  const bulletCandidates = summaryText
-    .split(/\n+/)
-    .map((line) => line.trim().replace(/^[-•*]\s*/, ''))
-    .filter((line) => line.length > 0)
-
-  const bulletPoints = bulletCandidates.filter((line) => /[A-Za-z]/.test(line)).slice(0, 5)
-
-  if (bulletPoints.length >= 3) {
-    return bulletPoints
+// Parse structured summary with 4 sections
+function parseStructuredSummary(summaryText: string, originalInput: string): {
+  keyDiscussionPoints: string[]
+  nextSteps: string[]
+  sopChecks: string[]
+  openQuestions: string[]
+} {
+  const sections = {
+    keyDiscussionPoints: [] as string[],
+    nextSteps: [] as string[],
+    sopChecks: [] as string[],
+    openQuestions: [] as string[]
   }
 
-  // Try splitting by sentences if bullet extraction didn't yield enough items
-  let summary = summaryText
-    .split(/(?<=[.!?])\s+/)
-    .map((item: string) => item.trim().replace(/[.!?]$/, ''))
-    .filter((item: string) => item.length > 15)
+  const lines = summaryText.split('\n').map(line => line.trim()).filter(line => line.length > 0)
+  let currentSection = ''
 
-  if (summary.length < 3) {
-    summary = extractKeyPoints(originalInput)
+  for (const line of lines) {
+    // Detect section headers
+    if (line.match(/^#+\s*Key Discussion Points/i)) {
+      currentSection = 'keyDiscussionPoints'
+      continue
+    } else if (line.match(/^#+\s*Next Steps/i)) {
+      currentSection = 'nextSteps'
+      continue
+    } else if (line.match(/^#+\s*SOP Checks/i)) {
+      currentSection = 'sopChecks'
+      continue
+    } else if (line.match(/^#+\s*Open Questions/i)) {
+      currentSection = 'openQuestions'
+      continue
+    }
+
+    // Extract bullet points
+    if (currentSection && line.match(/^[-•*]\s+/)) {
+      const bullet = line.replace(/^[-•*]\s+/, '').trim()
+      if (bullet.length > 0) {
+        sections[currentSection as keyof typeof sections].push(bullet)
+      }
+    }
   }
 
-  return summary.slice(0, 5)
+  // Validate and limit sections to PRD requirements (2-5 bullets each, except Open Questions 1-3)
+  sections.keyDiscussionPoints = validateSection(sections.keyDiscussionPoints, 2, 5, 'Key Discussion Points')
+  sections.nextSteps = validateSection(sections.nextSteps, 2, 5, 'Next Steps')
+  sections.sopChecks = validateSection(sections.sopChecks, 2, 5, 'SOP Checks')
+  sections.openQuestions = validateSection(sections.openQuestions, 1, 3, 'Open Questions')
+
+  // Fallback if sections are empty
+  if (sections.keyDiscussionPoints.length === 0) {
+    sections.keyDiscussionPoints = extractKeyPoints(originalInput).slice(0, 5)
+  }
+  if (sections.nextSteps.length === 0) {
+    sections.nextSteps = extractActionItems(originalInput).slice(0, 5)
+  }
+  if (sections.sopChecks.length === 0) {
+    sections.sopChecks = performSOPCheck(originalInput).slice(0, 5)
+  }
+  if (sections.openQuestions.length === 0) {
+    sections.openQuestions = generateProbingQuestions(originalInput).slice(0, 3)
+  }
+
+  return sections
+}
+
+// Validate section has correct number of bullets per PRD
+function validateSection(items: string[], min: number, max: number, sectionName: string): string[] {
+  if (items.length === 0) {
+    return [`No ${sectionName.toLowerCase()} noted`]
+  }
+  
+  if (items.length < min) {
+    // Pad with generic items if too few
+    const padded = [...items]
+    while (padded.length < min) {
+      padded.push(`Additional ${sectionName.toLowerCase()} item`)
+    }
+    return padded.slice(0, max)
+  }
+  
+  return items.slice(0, max)
 }
 
 // Extract key points from original input as fallback
@@ -373,21 +424,21 @@ function generateDemoOutput(input: string, meetingType?: string): Promise<Summar
   return new Promise((resolve) => {
     setTimeout(() => {
       try {
-        const summary = [
+        const keyDiscussionPoints = [
           'Meeting discussed key project updates',
           'Team reviewed current progress and blockers',
           'Decisions made on next phase priorities'
         ]
         
         const detectedMeetingType = meetingType ?? detectMeetingType(input)
-        const actionItems = extractActionItems(input, detectedMeetingType)
-        const sopCheck = performSOPCheck(input, detectedMeetingType)
-        const probingQuestions = generateProbingQuestions(input, detectedMeetingType)
+        const nextSteps = extractActionItems(input, detectedMeetingType)
+        const sopChecks = performSOPCheck(input, detectedMeetingType)
+        const openQuestions = generateProbingQuestions(input, detectedMeetingType)
         const result = {
-          summary: summary.length > 0 ? summary : ['Demo summary generated'],
-          actionItems: actionItems.length > 0 ? actionItems : ['Demo action item'],
-          sopCheck: sopCheck.length > 0 ? sopCheck : ['✅ Demo SOP check'],
-          probingQuestions: probingQuestions.length > 0 ? probingQuestions : ['Demo probing question'],
+          keyDiscussionPoints: keyDiscussionPoints.length > 0 ? keyDiscussionPoints : ['Demo key discussion point'],
+          nextSteps: nextSteps.length > 0 ? nextSteps : ['Demo next step'],
+          sopChecks: sopChecks.length > 0 ? sopChecks : ['✅ Demo SOP check'],
+          openQuestions: openQuestions.length > 0 ? openQuestions : ['Demo open question'],
           meetingType: detectedMeetingType,
         }
         
@@ -396,10 +447,10 @@ function generateDemoOutput(input: string, meetingType?: string): Promise<Summar
       } catch (error) {
         console.error('Demo mode error:', error)
         resolve({
-          summary: ['Demo summary generated'],
-          actionItems: ['Demo action item'],
-          sopCheck: ['✅ Demo SOP check'],
-          probingQuestions: ['Demo probing question'],
+          keyDiscussionPoints: ['Demo key discussion point'],
+          nextSteps: ['Demo next step'],
+          sopChecks: ['✅ Demo SOP check'],
+          openQuestions: ['Demo open question'],
           meetingType: meetingType ?? 'general',
         })
       }

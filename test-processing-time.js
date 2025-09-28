@@ -29,24 +29,23 @@ async function testProcessingTime() {
     console.log('✅ API Response received successfully!');
     console.log(`⏱️  Processing time: ${processingTime}ms (${(processingTime / 1000).toFixed(2)} seconds)`);
     console.log('\n📊 Response structure:');
-    console.log(`- Summary items: ${result.summary ? result.summary.length : 0}`);
-    console.log(`- Action items: ${result.actionItems ? result.actionItems.length : 0}`);
-    console.log(`- SOP check items: ${result.sopCheck ? result.sopCheck.length : 0}`);
-    console.log(`- Probing questions: ${result.probingQuestions ? result.probingQuestions.length : 0}`);
-    
-    if (result.quality) {
-      console.log('\n🎯 Quality scores:');
-      console.log(`- Completeness: ${result.quality.completeness}%`);
-      console.log(`- Clarity: ${result.quality.clarity}%`);
-      console.log(`- Actionability: ${result.quality.actionability}%`);
-    }
+    console.log(`- Key Discussion Points: ${result.keyDiscussionPoints ? result.keyDiscussionPoints.length : 0}`);
+    console.log(`- Next Steps: ${result.nextSteps ? result.nextSteps.length : 0}`);
+    console.log(`- SOP Checks: ${result.sopChecks ? result.sopChecks.length : 0}`);
+    console.log(`- Open Questions: ${result.openQuestions ? result.openQuestions.length : 0}`);
     
     console.log('\n📝 Sample output:');
-    if (result.summary && result.summary.length > 0) {
-      console.log('Summary:', result.summary[0]);
+    if (result.keyDiscussionPoints && result.keyDiscussionPoints.length > 0) {
+      console.log('Key Discussion Point:', result.keyDiscussionPoints[0]);
     }
-    if (result.actionItems && result.actionItems.length > 0) {
-      console.log('Action item:', result.actionItems[0]);
+    if (result.nextSteps && result.nextSteps.length > 0) {
+      console.log('Next Step:', result.nextSteps[0]);
+    }
+    if (result.sopChecks && result.sopChecks.length > 0) {
+      console.log('SOP Check:', result.sopChecks[0]);
+    }
+    if (result.openQuestions && result.openQuestions.length > 0) {
+      console.log('Open Question:', result.openQuestions[0]);
     }
     
   } catch (error) {
