@@ -113,3 +113,9 @@ For real-time progress updates, the API could be enhanced to:
 - Modern browsers with CSS Grid and Flexbox support
 - Responsive design works on mobile and desktop
 - Graceful degradation for older browsers
+
+## Layout Integration
+
+- The progress indicator sits above the new condensed report grid in `app/page.tsx`
+- Desktop screens now display the report content in multiple columns, ensuring the loader leaves enough breathing room at the top of the page
+- No additional spacing changes are required for the indicator after the layout update

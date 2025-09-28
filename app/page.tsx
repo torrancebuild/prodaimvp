@@ -147,6 +147,7 @@ export default function Home() {
   const [copyStatus, setCopyStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const copyFeedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const selectedType = MEETING_TYPES.find(type => type.id === selectedMeetingType) ?? MEETING_TYPES[0]
+  const hasFollowUpReminders = output?.followUpReminders !== undefined && output.followUpReminders.length > 0
 
   useEffect(() => {
     return () => {
@@ -496,214 +497,216 @@ export default function Home() {
             </button>
           </div>
 
-          {/* Key Discussion Points */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
-            <h3 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
-              💬 Key Discussion Points
-            </h3>
-            <ul className="space-y-2">
-              {output.keyDiscussionPoints.map((item, index) => (
-                <li key={index} className="text-blue-800 flex items-start gap-2">
-                  <span className="text-blue-600 mt-1">•</span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Action Items */}
-          <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
-            <h3 className="font-semibold text-green-900 mb-4 flex items-center gap-2">
-              ✅ Action Items & Next Steps
-            </h3>
-            <div className="space-y-4">
-              {output.nextSteps.map((item, index) => (
-                <div key={index} className="bg-white rounded-lg p-4 border border-green-100">
-                  <div className="flex items-start justify-between mb-2">
-                    <h4 className="font-medium text-gray-900">{item.task}</h4>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      item.priority === 'high' ? 'bg-red-100 text-red-800' :
-                      item.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-green-100 text-green-800'
-                    }`}>
-                      {item.priority.toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
-                    <div><strong>Owner:</strong> {item.owner}</div>
-                    <div><strong>Deadline:</strong> {item.deadline || 'TBD'}</div>
-                    {item.successCriteria && (
-                      <div className="md:col-span-1"><strong>Success:</strong> {item.successCriteria}</div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* SOP Checks */}
-          <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 mb-6">
-            <h3 className="font-semibold text-orange-900 mb-4 flex items-center gap-2">
-              📋 SOP Compliance Check
-            </h3>
-            <div className="space-y-3">
-              {output.sopChecks.map((item, index) => (
-                <div key={index} className="bg-white rounded-lg p-4 border border-orange-100">
-                  <div className="flex items-start justify-between mb-2">
-                    <h4 className="font-medium text-gray-900">{item.category}</h4>
-                    <div className="flex items-center gap-2">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        item.status === 'compliant' ? 'bg-green-100 text-green-800' :
-                        item.status === 'partial' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {item.status.toUpperCase()}
-                      </span>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        item.severity === 'critical' ? 'bg-red-100 text-red-800' :
-                        item.severity === 'important' ? 'bg-orange-100 text-orange-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {item.severity.toUpperCase()}
-                      </span>
-                    </div>
-                  </div>
-                  <p className="text-gray-700 mb-2">{item.details}</p>
-                  {item.recommendation && (
-                    <p className="text-sm text-blue-600"><strong>Recommendation:</strong> {item.recommendation}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Risk Assessment */}
-          {output.riskAssessment && output.riskAssessment.length > 0 && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-6">
-              <h3 className="font-semibold text-red-900 mb-4 flex items-center gap-2">
-                ⚠️ Risk Assessment
+          <div className="grid gap-4 xl:grid-cols-12">
+            {/* Key Discussion Points */}
+            <section className="bg-blue-50 border border-blue-200 rounded-lg p-5 xl:col-span-4">
+              <h3 className="font-semibold text-blue-900 mb-2.5 flex items-center gap-2">
+                💬 Key Points
               </h3>
-              <div className="space-y-4">
-                {output.riskAssessment.map((risk, index) => (
-                  <div key={index} className="bg-white rounded-lg p-4 border border-red-100">
-                    <div className="flex items-start justify-between mb-2">
-                      <h4 className="font-medium text-gray-900">{risk.risk}</h4>
-                      <div className="flex items-center gap-2">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          risk.impact === 'high' ? 'bg-red-100 text-red-800' :
-                          risk.impact === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-green-100 text-green-800'
-                        }`}>
-                          Impact: {risk.impact.toUpperCase()}
-                        </span>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          risk.probability === 'high' ? 'bg-red-100 text-red-800' :
-                          risk.probability === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-green-100 text-green-800'
-                        }`}>
-                          Probability: {risk.probability.toUpperCase()}
-                        </span>
-                      </div>
-                    </div>
-                    <p className="text-gray-700 mb-2"><strong>Mitigation:</strong> {risk.mitigation}</p>
-                    {risk.owner && (
-                      <p className="text-sm text-blue-600"><strong>Owner:</strong> {risk.owner}</p>
-                    )}
-                  </div>
+              <ul className="flex flex-col gap-2">
+                {output.keyDiscussionPoints.map((item, index) => (
+                  <li key={index} className="text-blue-800 flex items-start gap-2">
+                    <span className="text-blue-600 mt-1">•</span>
+                    <span>{item}</span>
+                  </li>
                 ))}
-              </div>
-            </div>
-          )}
+              </ul>
+            </section>
 
-          {/* Follow-up Reminders */}
-          {output.followUpReminders && output.followUpReminders.length > 0 && (
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-6 mb-6">
-              <h3 className="font-semibold text-purple-900 mb-4 flex items-center gap-2">
-                🔔 Follow-up Reminders
+            {/* Action Items */}
+            <section className="bg-green-50 border border-green-200 rounded-lg p-5 xl:col-span-8">
+              <h3 className="font-semibold text-green-900 mb-3 flex items-center gap-2">
+                ✅ Action Items
               </h3>
-              <div className="space-y-3">
-                {output.followUpReminders.map((reminder, index) => (
-                  <div key={index} className="bg-white rounded-lg p-4 border border-purple-100">
-                    <div className="flex items-start justify-between mb-2">
-                      <h4 className="font-medium text-gray-900">{reminder.action}</h4>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        reminder.type === 'escalation' ? 'bg-red-100 text-red-800' :
-                        reminder.type === 'review' ? 'bg-blue-100 text-blue-800' :
-                        reminder.type === 'decision' ? 'bg-purple-100 text-purple-800' :
+              <div className="flex flex-col gap-3">
+                {output.nextSteps.map((item, index) => (
+                  <div key={index} className="bg-white rounded-lg p-4 border border-green-100 shadow-sm">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <h4 className="font-medium text-gray-900 leading-snug">{item.task}</h4>
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        item.priority === 'high' ? 'bg-red-100 text-red-800' :
+                        item.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
                         'bg-green-100 text-green-800'
                       }`}>
-                        {reminder.type.toUpperCase()}
+                        {item.priority.toUpperCase()}
                       </span>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                      <div><strong>Due Date:</strong> {reminder.dueDate}</div>
-                      <div><strong>Owner:</strong> {reminder.owner}</div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs md:text-sm text-gray-600">
+                      <span><strong>Owner:</strong> {item.owner}</span>
+                      <span><strong>Deadline:</strong> {item.deadline || 'TBD'}</span>
+                      {item.successCriteria && (
+                        <span className="md:col-span-1"><strong>Success:</strong> {item.successCriteria}</span>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            </section>
 
-          {/* Open Questions */}
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-6">
-            <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              ❓ Open Questions
-            </h3>
-            <ul className="space-y-2">
-              {output.openQuestions.map((question, index) => (
-                <li key={index} className="text-gray-700 flex items-start gap-2">
-                  <span className="text-gray-500 mt-1">•</span>
-                  <span>{question}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Meeting Quality Metrics */}
-          {output.meetingQuality && (
-            <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-6">
-              <h3 className="font-semibold text-indigo-900 mb-4 flex items-center gap-2">
-                📈 Meeting Quality Analysis
+            {/* SOP Checks */}
+            <section className="bg-orange-50 border border-orange-200 rounded-lg p-5 xl:col-span-6">
+              <h3 className="font-semibold text-orange-900 mb-3 flex items-center gap-2">
+                📋 SOP Compliance
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-3">Quality Scores</h4>
-                  <div className="space-y-2">
-                    {Object.entries(output.meetingQuality.areas).map(([area, score]) => (
-                      <div key={area} className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600 capitalize">{area.replace(/([A-Z])/g, ' $1')}</span>
+              <div className="flex flex-col gap-3">
+                {output.sopChecks.map((item, index) => (
+                  <div key={index} className="bg-white rounded-lg p-4 border border-orange-100">
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <h4 className="font-medium text-gray-900 leading-snug">{item.category}</h4>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          item.status === 'compliant' ? 'bg-green-100 text-green-800' :
+                          item.status === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          {item.status.toUpperCase()}
+                        </span>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          item.severity === 'critical' ? 'bg-red-100 text-red-800' :
+                          item.severity === 'important' ? 'bg-orange-100 text-orange-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {item.severity.toUpperCase()}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-700 mb-1.5">{item.details}</p>
+                    {item.recommendation && (
+                      <p className="text-xs md:text-sm text-blue-600"><strong>Recommendation:</strong> {item.recommendation}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Risk Assessment */}
+            {output.riskAssessment && output.riskAssessment.length > 0 && (
+              <section className="bg-red-50 border border-red-200 rounded-lg p-5 xl:col-span-6">
+                <h3 className="font-semibold text-red-900 mb-3 flex items-center gap-2">
+                  ⚠️ Risk Assessment
+                </h3>
+                <div className="flex flex-col gap-3">
+                  {output.riskAssessment.map((risk, index) => (
+                    <div key={index} className="bg-white rounded-lg p-4 border border-red-100">
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <h4 className="font-medium text-gray-900 leading-snug">{risk.risk}</h4>
                         <div className="flex items-center gap-2">
-                          <div className="w-20 bg-gray-200 rounded-full h-2">
-                            <div 
-                              className={`h-2 rounded-full ${
-                                score >= 8 ? 'bg-green-500' :
-                                score >= 6 ? 'bg-yellow-500' :
-                                'bg-red-500'
-                              }`}
-                              style={{ width: `${(score / 10) * 100}%` }}
-                            ></div>
-                          </div>
-                          <span className="text-sm font-medium w-6">{score}/10</span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            risk.impact === 'high' ? 'bg-red-100 text-red-800' :
+                            risk.impact === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-green-100 text-green-800'
+                          }`}>
+                            Impact: {risk.impact.toUpperCase()}
+                          </span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            risk.probability === 'high' ? 'bg-red-100 text-red-800' :
+                            risk.probability === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-green-100 text-green-800'
+                          }`}>
+                            Probability: {risk.probability.toUpperCase()}
+                          </span>
                         </div>
                       </div>
-                    ))}
+                      <p className="text-sm text-gray-700 mb-1.5"><strong>Mitigation:</strong> {risk.mitigation}</p>
+                      {risk.owner && (
+                        <p className="text-xs md:text-sm text-blue-600"><strong>Owner:</strong> {risk.owner}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Follow-up Reminders */}
+            {output.followUpReminders && output.followUpReminders.length > 0 && (
+              <section className="bg-purple-50 border border-purple-200 rounded-lg p-5 xl:col-span-4">
+                <h3 className="font-semibold text-purple-900 mb-3 flex items-center gap-2">
+                  🔔 Follow-ups
+                </h3>
+                <div className="flex flex-col gap-3">
+                  {output.followUpReminders.map((reminder, index) => (
+                    <div key={index} className="bg-white rounded-lg p-4 border border-purple-100">
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <h4 className="font-medium text-gray-900 leading-snug">{reminder.action}</h4>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          reminder.type === 'escalation' ? 'bg-red-100 text-red-800' :
+                          reminder.type === 'review' ? 'bg-blue-100 text-blue-800' :
+                          reminder.type === 'decision' ? 'bg-purple-100 text-purple-800' :
+                          'bg-green-100 text-green-800'
+                        }`}>
+                          {reminder.type.toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs md:text-sm text-gray-600">
+                        <span><strong>Due:</strong> {reminder.dueDate}</span>
+                        <span><strong>Owner:</strong> {reminder.owner}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Open Questions */}
+            <section className={`bg-gray-50 border border-gray-200 rounded-lg p-5 ${hasFollowUpReminders ? 'xl:col-span-4' : 'xl:col-span-6'}`}>
+              <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                ❓ Open Questions
+              </h3>
+              <ul className="flex flex-col gap-2">
+                {output.openQuestions.map((question, index) => (
+                  <li key={index} className="text-gray-700 flex items-start gap-2">
+                    <span className="text-gray-500 mt-1">•</span>
+                    <span>{question}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            {/* Meeting Quality Metrics */}
+            {output.meetingQuality && (
+              <section className={`bg-indigo-50 border border-indigo-200 rounded-lg p-5 ${hasFollowUpReminders ? 'xl:col-span-4' : 'xl:col-span-6'}`}>
+                <h3 className="font-semibold text-indigo-900 mb-3 flex items-center gap-2">
+                  📈 Meeting Quality
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-2">Quality Scores</h4>
+                    <div className="flex flex-col gap-2">
+                      {Object.entries(output.meetingQuality.areas).map(([area, score]) => (
+                        <div key={area} className="flex items-center justify-between gap-2">
+                          <span className="text-sm text-gray-600 capitalize">{area.replace(/([A-Z])/g, ' $1')}</span>
+                          <div className="flex items-center gap-2">
+                            <div className="w-20 bg-gray-200 rounded-full h-2">
+                              <div
+                                className={`h-2 rounded-full ${
+                                  score >= 8 ? 'bg-green-500' :
+                                  score >= 6 ? 'bg-yellow-500' :
+                                  'bg-red-500'
+                                }`}
+                                style={{ width: `${(score / 10) * 100}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-sm font-medium w-8 text-right">{score}/10</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-2">Recommendations</h4>
+                    <ul className="flex flex-col gap-2">
+                      {output.meetingQuality.recommendations.map((rec, index) => (
+                        <li key={index} className="text-sm text-gray-700 flex items-start gap-2">
+                          <span className="text-indigo-500 mt-1">•</span>
+                          <span>{rec}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 </div>
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-3">Recommendations</h4>
-                  <ul className="space-y-1">
-                    {output.meetingQuality.recommendations.map((rec, index) => (
-                      <li key={index} className="text-sm text-gray-700 flex items-start gap-2">
-                        <span className="text-indigo-500 mt-1">•</span>
-                        <span>{rec}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </div>
-          )}
+              </section>
+            )}
+          </div>
         </div>
       )}
 

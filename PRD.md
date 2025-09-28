@@ -4,7 +4,7 @@
 
 **Product Vision:** Help customer-facing teams transform messy meeting notes into concise, structured summaries that make action items, SOP gaps, and follow-up questions obvious within seconds.
 
-**MVP Goal:** Deliver a single-page web app that accepts raw notes (≤1000 chars) and outputs four clean sections powered by Anthropic Claude 3 Haiku, with optional demo mode for onboarding without API keys.
+**MVP Goal:** Deliver a single-page web app that accepts raw notes (≤1000 chars) and outputs a multi-section intelligence report powered by Anthropic Claude 3 Haiku, with optional demo mode for onboarding without API keys.
 
 ## 2. Target Users & Needs
 
@@ -36,14 +36,16 @@
 
 3. **AI Summarization**
    - Default provider: Anthropic Claude 3 Haiku via `/api/summarize` POST.
-   - Prompt requests a Markdown/JSON hybrid that produces four sections: `Key Discussion Points`, `Next Steps`, `SOP Checks`, `Open Questions` (each as 2–5 bullet strings).
+   - Request structured JSON covering: `keyDiscussionPoints`, `nextSteps`, `sopChecks`, `openQuestions`, `riskAssessment`, `followUpReminders`, and `meetingQuality`.
    - If Claude response is invalid, surface a friendly error; heuristics are optional stretch goals.
-   - Demo mode (no `ANTHROPIC_API_KEY` or `NEXT_PUBLIC_DEMO_MODE=true`) returns mock content matching the four-section structure.
+   - Demo mode (no `ANTHROPIC_API_KEY` or `NEXT_PUBLIC_DEMO_MODE=true`) returns mock content matching the structured schema above.
 
 4. **Output Presentation**
-   - Display sections with consistent headings: “Key Discussion Points”, “Next Steps”, “SOP Checks”, “Open Questions”.
+   - Display sections in a responsive, condensed multi-column layout on desktop while stacking on mobile.
+   - Headings: “Key Points”, “Action Items”, “SOP Compliance”, “Risk Assessment”, “Follow-ups”, “Open Questions”, “Meeting Quality”.
    - Bullet formatting: sentence case, no trailing punctuation, highlight SOP gaps with icon (⚠️).
-   - Copy-to-clipboard concatenates sections with headings.
+   - Meeting quality shows per-area scores with bars and recommendations.
+   - Copy-to-clipboard mirrors the section structure, including meeting type and scores.
 
 5. **History Management** *(Nice-to-have)*
    - If enabled, save each successful summary to Supabase (`meetings`, `meeting_outputs`) and trim to last 10; otherwise stub out with an empty history list in demo mode.

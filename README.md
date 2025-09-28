@@ -12,7 +12,7 @@ Transform your messy meeting notes into actionable business intelligence with AI
 - **📈 Meeting Quality Metrics**: Provides 1-10 scoring across preparation, participation, and decision-making
 - **💡 Context-Aware Questions**: Generates probing questions that identify missing critical information
 - **📱 Beautiful UI**: Color-coded sections with priority badges and progress indicators
-- **📋 Enhanced Export**: Comprehensive clipboard export with all structured data
+- **📋 Enhanced Export**: Comprehensive clipboard export with meeting type, scores, and structured data
 - **🔄 History Management**: Automatically saves and retrieves your last 10 meeting notes
 - **✅ Real-time Validation**: 1000 character limit with visual feedback and progress tracking
 - **🛡️ Error Handling**: Comprehensive error messages and fallback modes
@@ -81,7 +81,7 @@ Follow the detailed instructions in [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) to:
 npm run dev
 ```
 
-Visit [http://localhost:3000](http://localhost:3000) to see your app!
+Visit [http://localhost:3000](http://localhost:3000) to see your app! The dev server runs on port 3000 by default; if it is already in use, Next.js automatically tries the next available port (3001+).
 
 ## 🔧 API Configuration
 
@@ -120,7 +120,7 @@ Visit [http://localhost:3000](http://localhost:3000) to see your app!
 
 ### Output Structure
 
-The AI generates a comprehensive **Meeting Intelligence Report** with:
+The AI generates a comprehensive **Meeting Intelligence Report** with a condensed, multi-column layout so key sections stay above the fold on desktop:
 
 1. **💬 Key Discussion Points**: Critical decisions and important topics covered
 2. **✅ Action Items & Next Steps**: Specific tasks with:
@@ -146,6 +146,27 @@ The AI generates a comprehensive **Meeting Intelligence Report** with:
    - Decision-making clarity
    - Action item clarity
    - Follow-through planning
+   - Trend-aligned recommendations
+
+### Copy Export Structure
+
+The "Copy Full Report" button now exports a plain-text summary that mirrors the on-screen structure:
+
+```
+MEETING INTELLIGENCE REPORT
+Meeting Type: Weekly Report
+Overall Quality Score: 8/10
+
+KEY DISCUSSION POINTS:
+- Critical roadmap items
+...
+
+NEXT STEPS:
+- Task name
+  Owner: Jane | Deadline: Friday | Priority: HIGH | Success Criteria: ...
+```
+
+Each section falls back to `- None` when empty so downstream workflows see consistent headers.
 
 ## 🗄️ Database Schema
 
@@ -201,11 +222,11 @@ The app works without API keys in demo mode:
 - Shows all UI functionality
 
 ### Manual Testing
-1. Test with various input lengths
-2. Verify character limit enforcement
-3. Check error handling with invalid inputs
-4. Test copy functionality
-5. Verify history loading
+1. Test across meeting types to confirm the condensed layout wraps correctly
+2. Validate character limit enforcement
+3. Check error handling with invalid inputs and API failures
+4. Test copy-to-clipboard output in a plain-text editor
+5. Verify history loading (Supabase enabled) or demo mode fallback
 
 ## 🚀 Deployment
 
