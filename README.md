@@ -1,16 +1,22 @@
-# AI Meeting Notes Summarizer
+# AI Meeting Intelligence Platform
 
-Transform your messy meeting notes into structured, shareable outputs with AI-powered summarization.
+Transform your messy meeting notes into actionable business intelligence with AI-powered analysis. Get specific action items with owners and deadlines, risk assessments, SOP compliance checks, and meeting quality metrics - all in one comprehensive report.
 
 ## 🚀 Features
 
-- **AI-Powered Summarization**: Uses Anthropic's Claude 3 Haiku model for intelligent text summarization
-- **Structured Output**: Generates summary, action items, SOP checks, and probing questions
-- **Real-time Validation**: 1000 character limit with visual feedback and progress tracking
-- **History Management**: Automatically saves and retrieves your last 10 meeting notes
-- **Copy to Clipboard**: Easy export of formatted results
-- **Error Handling**: Comprehensive error messages and fallback modes
-- **Demo Mode**: Works without API keys for testing
+- **🧠 AI-Powered Business Intelligence**: Uses Anthropic's Claude 3 Haiku model for intelligent meeting analysis
+- **📊 Structured Action Items**: Generates specific tasks with owners, deadlines, and success criteria
+- **📋 Intelligent SOP Compliance**: Checks meeting quality against business process standards
+- **⚠️ Risk Assessment**: Identifies potential risks with impact/probability analysis and mitigation strategies
+- **🔔 Follow-up Tracking**: Creates actionable reminders with due dates and owners
+- **📈 Meeting Quality Metrics**: Provides 1-10 scoring across preparation, participation, and decision-making
+- **💡 Context-Aware Questions**: Generates probing questions that identify missing critical information
+- **📱 Beautiful UI**: Color-coded sections with priority badges and progress indicators
+- **📋 Enhanced Export**: Comprehensive clipboard export with all structured data
+- **🔄 History Management**: Automatically saves and retrieves your last 10 meeting notes
+- **✅ Real-time Validation**: 1000 character limit with visual feedback and progress tracking
+- **🛡️ Error Handling**: Comprehensive error messages and fallback modes
+- **🎭 Demo Mode**: Works without API keys for testing with realistic sample data
 
 ## 🛠️ Tech Stack
 
@@ -114,12 +120,32 @@ Visit [http://localhost:3000](http://localhost:3000) to see your app!
 
 ### Output Structure
 
-The AI generates four structured sections:
+The AI generates a comprehensive **Meeting Intelligence Report** with:
 
-1. **Summary**: Key points and main topics
-2. **Action Items**: Tasks with owners and deadlines
-3. **SOP Check**: Standard Operating Procedure compliance
-4. **Probing Questions**: Follow-up questions for clarity
+1. **💬 Key Discussion Points**: Critical decisions and important topics covered
+2. **✅ Action Items & Next Steps**: Specific tasks with:
+   - Clear ownership assignment
+   - Realistic deadlines
+   - Priority levels (high/medium/low)
+   - Success criteria for completion
+3. **📋 SOP Compliance Check**: Business process validation with:
+   - Compliance status (compliant/partial/missing)
+   - Severity levels (critical/important/minor)
+   - Actionable recommendations for improvement
+4. **⚠️ Risk Assessment**: Identified risks with:
+   - Impact and probability analysis
+   - Specific mitigation strategies
+   - Risk ownership assignment
+5. **🔔 Follow-up Reminders**: Trackable actions with:
+   - Due dates and owners
+   - Action types (follow-up/escalation/review/decision)
+6. **❓ Open Questions**: Context-aware questions that identify missing information
+7. **📈 Meeting Quality Analysis**: 1-10 scoring across:
+   - Meeting preparation
+   - Team participation
+   - Decision-making clarity
+   - Action item clarity
+   - Follow-through planning
 
 ## 🗄️ Database Schema
 

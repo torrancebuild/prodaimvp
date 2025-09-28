@@ -1,10 +1,61 @@
+export type MeetingType = 'daily-standup' | 'weekly-report' | 'risk-assessment' | 'general'
+
 export interface SummaryOutput {
   keyDiscussionPoints: string[]
-  nextSteps: string[]
-  sopChecks: string[]
+  nextSteps: ActionItem[]
+  sopChecks: SOPCheck[]
   openQuestions: string[]
   meetingType?: string
+  riskAssessment?: RiskItem[]
+  followUpReminders?: FollowUpReminder[]
+  meetingQuality?: MeetingQualityMetrics
 }
+
+export interface ActionItem {
+  task: string
+  owner: string
+  deadline?: string
+  priority: 'high' | 'medium' | 'low'
+  dependencies?: string[]
+  successCriteria?: string
+}
+
+export interface SOPCheck {
+  category: string
+  status: 'compliant' | 'partial' | 'missing'
+  details: string
+  recommendation?: string
+  severity: 'critical' | 'important' | 'minor'
+}
+
+export interface RiskItem {
+  risk: string
+  impact: 'high' | 'medium' | 'low'
+  probability: 'high' | 'medium' | 'low'
+  mitigation: string
+  owner?: string
+}
+
+export interface FollowUpReminder {
+  action: string
+  dueDate: string
+  owner: string
+  type: 'follow-up' | 'escalation' | 'review' | 'decision'
+}
+
+export interface MeetingQualityMetrics {
+  overallScore: number // 1-10
+  areas: {
+    preparation: number
+    participation: number
+    decisionMaking: number
+    actionClarity: number
+    followThrough: number
+  }
+  recommendations: string[]
+}
+
+import { jsonrepair } from 'jsonrepair'
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
 const CLAUDE_MODEL = process.env.CLAUDE_SUMMARY_MODEL || 'claude-3-haiku-20240307'
@@ -13,22 +64,25 @@ const DEMO_MODE_FLAG =
   process.env.NEXT_PUBLIC_DEMO_MODE === 'true' ||
   process.env.DEMO_MODE === 'true'
 
-export async function summarizeNotes(input: string): Promise<SummaryOutput> {
-  const meetingType = detectMeetingType(input)
+export async function summarizeNotes(input: string, selectedMeetingType: MeetingType = 'general'): Promise<SummaryOutput> {
+  const meetingType = selectedMeetingType === 'general' ? detectMeetingType(input) : selectedMeetingType
 
   if (shouldUseDemoMode()) {
     return await generateDemoOutput(input, meetingType)
   }
 
   try {
-    const summaryText = await fetchClaudeSummary(input)
-    const sections = parseStructuredSummary(summaryText, input)
+    const summaryText = await fetchClaudeSummary(input, meetingType)
+    const parsedData = parseStructuredSummary(summaryText, input)
     return {
-      keyDiscussionPoints: sections.keyDiscussionPoints,
-      nextSteps: sections.nextSteps,
-      sopChecks: sections.sopChecks,
-      openQuestions: sections.openQuestions,
+      keyDiscussionPoints: parsedData.keyDiscussionPoints,
+      nextSteps: parsedData.nextSteps,
+      sopChecks: parsedData.sopChecks,
+      openQuestions: parsedData.openQuestions,
       meetingType,
+      riskAssessment: parsedData.riskAssessment,
+      followUpReminders: parsedData.followUpReminders,
+      meetingQuality: parsedData.meetingQuality,
     }
   } catch (error) {
     console.error('Summarization failed:', error)
@@ -52,7 +106,43 @@ function shouldUseDemoMode(): boolean {
   return false
 }
 
-async function fetchClaudeSummary(input: string): Promise<string> {
+function getMeetingSpecificPrompt(meetingType: MeetingType): string {
+  const prompts: Record<MeetingType, string> = {
+    'daily-standup': `You are analyzing a DAILY STANDUP meeting. Focus on:
+- Blockers and dependencies requiring immediate attention
+- Team coordination, handoffs, and sprint commitments
+- Fast decisions needed to keep the team unblocked within the next 24 hours
+- Clear owners, deadlines, and escalation paths
+
+Generate a concise plan of action for the next working day.`,
+    'weekly-report': `You are analyzing a WEEKLY REPORT meeting. Focus on:
+- Progress against goals, metrics, and commitments
+- Key wins, setbacks, and learnings the wider org should know
+- Trends over the past two weeks and predicted trajectory
+- Stakeholder communication or approvals required
+
+Generate an executive-ready report highlighting priorities for the upcoming week.`,
+    'risk-assessment': `You are analyzing a RISK ASSESSMENT meeting. Focus on:
+- Specific risks raised (technical, operational, financial, compliance)
+- Probability and impact ratings with rationale
+- Concrete mitigation steps, fallback plans, and monitoring signals
+- Escalation triggers and responsible owners
+
+Generate a risk matrix that leadership can act on immediately.`,
+    'general': `You are analyzing a GENERAL MEETING. Focus on:
+- Key decisions, agreements, and rationale
+- Action items with owners, deadlines, and success measures
+- Process/SOP gaps and recommended improvements
+- Open questions requiring follow-up or clarification
+- Meeting quality and follow-through readiness
+
+Generate comprehensive meeting intelligence.`
+  }
+
+  return prompts[meetingType] ?? prompts.general
+}
+
+async function fetchClaudeSummary(input: string, meetingType: MeetingType): Promise<string> {
   if (!ANTHROPIC_API_KEY) {
     throw new Error('Missing Anthropic API key.')
   }
@@ -66,13 +156,71 @@ async function fetchClaudeSummary(input: string): Promise<string> {
     },
     body: JSON.stringify({
       model: CLAUDE_MODEL,
-      max_tokens: 600,
-      temperature: 0.2,
-      system: 'You are an AI assistant that converts messy meeting notes into structured summaries. Always respond with exactly 4 sections in this format:\n\n## Key Discussion Points\n• [2-5 bullet points]\n\n## Next Steps\n• [2-5 bullet points with clear owners]\n\n## SOP Checks\n• [2-5 bullet points with ✅ for good practices, ⚠️ for gaps]\n\n## Open Questions\n• [1-3 bullet points highlighting areas needing clarification]',
+      max_tokens: 800,
+      temperature: 0.1,
+      system: `${getMeetingSpecificPrompt(meetingType)}
+
+ALWAYS respond with this EXACT JSON format (valid JSON only):
+{
+  "keyDiscussionPoints": ["specific decision made", "important topic discussed", "critical update shared"],
+  "nextSteps": [
+    {
+      "task": "specific actionable task",
+      "owner": "person responsible",
+      "deadline": "specific date or timeframe",
+      "priority": "high|medium|low",
+      "successCriteria": "how to measure completion"
+    }
+  ],
+  "sopChecks": [
+    {
+      "category": "Meeting Preparation|Decision Documentation|Action Assignment|Follow-up Planning|Stakeholder Communication",
+      "status": "compliant|partial|missing",
+      "details": "specific assessment",
+      "recommendation": "actionable improvement",
+      "severity": "critical|important|minor"
+    }
+  ],
+  "openQuestions": ["specific question that needs answering"],
+  "riskAssessment": [
+    {
+      "risk": "specific risk identified",
+      "impact": "high|medium|low",
+      "probability": "high|medium|low",
+      "mitigation": "specific mitigation strategy",
+      "owner": "person responsible for mitigation"
+    }
+  ],
+  "followUpReminders": [
+    {
+      "action": "specific follow-up action",
+      "dueDate": "specific date",
+      "owner": "person responsible",
+      "type": "follow-up|escalation|review|decision"
+    }
+  ],
+  "meetingQuality": {
+    "overallScore": 8,
+    "areas": {
+      "preparation": 7,
+      "participation": 8,
+      "decisionMaking": 9,
+      "actionClarity": 6,
+      "followThrough": 7
+    },
+    "recommendations": ["specific improvement recommendations for the next meeting"]
+  }
+}
+
+MANDATORY:
+- Use only double quotes for JSON keys/values and escape characters correctly.
+- Tailor every section to the ${meetingType.toUpperCase()} meeting context.
+- If a value is unknown, use "TBD" instead of hallucinating.
+- If requested number of items is not available, provide as many as possible and explain why.`,
       messages: [
         {
           role: 'user',
-          content: `Meeting Notes:\n${input}\n\nConvert these notes into the 4-section format above.`
+          content: `${meetingType.toUpperCase()} Meeting Notes:\n${input}\n\nAnalyze these notes and provide ${meetingType} meeting intelligence. Clearly state what additional information is required if anything is missing.`
         }
       ]
     })
@@ -111,7 +259,7 @@ function getReadableErrorMessage(error: Error): string {
   return error.message || 'Unable to generate a summary at this time. Please try again later.'
 }
 
-function extractActionItems(text: string, meetingType: string = 'general'): string[] {
+function extractActionItems(text: string): string[] {
   const actionItems: string[] = []
   const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0)
   
@@ -159,9 +307,8 @@ function extractActionItems(text: string, meetingType: string = 'general'): stri
   return actionItems.slice(0, 5) // Limit to 5 action items
 }
 
-function performSOPCheck(text: string, meetingType: string = 'general'): string[] {
+function performSOPCheck(text: string): string[] {
   const sopResults: string[] = []
-  const lowerText = text.toLowerCase()
   
   // Enhanced Goals Detection
   const goalPatterns = [
@@ -205,7 +352,7 @@ function performSOPCheck(text: string, meetingType: string = 'general'): string[
   return sopResults
 }
 
-function generateProbingQuestions(text: string, meetingType: string = 'general'): string[] {
+function generateProbingQuestions(text: string): string[] {
   const questions: string[] = []
   const lowerText = text.toLowerCase()
   
@@ -240,94 +387,69 @@ function generateProbingQuestions(text: string, meetingType: string = 'general')
 }
 
 // Detect meeting type for context-aware processing
-function detectMeetingType(input: string): string {
+function detectMeetingType(input: string): MeetingType {
   const lowerText = input.toLowerCase()
   
-  // Standup/Status Meeting
-  if (lowerText.includes('standup') || lowerText.includes('status') || 
-      lowerText.includes('yesterday') || lowerText.includes('today') || 
-      lowerText.includes('blocked') || lowerText.includes('impediment')) {
-    return 'standup'
+  if (lowerText.includes('standup') || lowerText.includes('status update') ||
+      lowerText.includes('yesterday') || lowerText.includes('today') ||
+      lowerText.includes('blocker') || lowerText.includes('dependency')) {
+    return 'daily-standup'
   }
-  
-  // Planning Meeting
-  if (lowerText.includes('planning') || lowerText.includes('sprint') || 
-      lowerText.includes('backlog') || lowerText.includes('epic') || 
-      lowerText.includes('story') || lowerText.includes('task')) {
-    return 'planning'
+
+  if (lowerText.includes('risk') || lowerText.includes('mitigation') ||
+      lowerText.includes('impact') || lowerText.includes('probability') ||
+      lowerText.includes('contingency') || lowerText.includes('escalation')) {
+    return 'risk-assessment'
   }
-  
-  // Retrospective
-  if (lowerText.includes('retro') || lowerText.includes('retrospective') || 
-      lowerText.includes('went well') || lowerText.includes('improve') || 
-      lowerText.includes('start doing') || lowerText.includes('stop doing')) {
-    return 'retrospective'
+
+  if (lowerText.includes('weekly') || lowerText.includes('report') ||
+      lowerText.includes('metrics') || lowerText.includes('kpi') ||
+      lowerText.includes('progress') || lowerText.includes('update')) {
+    return 'weekly-report'
   }
-  
-  // Decision Meeting
-  if (lowerText.includes('decision') || lowerText.includes('decide') || 
-      lowerText.includes('approve') || lowerText.includes('reject') || 
-      lowerText.includes('vote') || lowerText.includes('consensus')) {
-    return 'decision'
-  }
-  
-  // Review Meeting
-  if (lowerText.includes('review') || lowerText.includes('demo') || 
-      lowerText.includes('presentation') || lowerText.includes('showcase')) {
-    return 'review'
-  }
-  
-  // Problem Solving
-  if (lowerText.includes('problem') || lowerText.includes('issue') || 
-      lowerText.includes('bug') || lowerText.includes('fix') || 
-      lowerText.includes('troubleshoot') || lowerText.includes('debug')) {
-    return 'problem-solving'
-  }
-  
+
   return 'general'
 }
 
 // Enhanced structured prompting for better AI outputs
-function createStructuredPrompt(input: string, meetingType: string): string {
-  const contextPrompts = {
-    'standup': 'Focus on: What was accomplished, what\'s planned, blockers, and team coordination.',
-    'planning': 'Focus on: Requirements, user stories, acceptance criteria, estimates, and sprint goals.',
-    'retrospective': 'Focus on: What went well, what didn\'t, lessons learned, and improvement actions.',
-    'decision': 'Focus on: Options considered, pros/cons, final decision, rationale, and next steps.',
-    'review': 'Focus on: Deliverables shown, feedback received, quality assessment, and improvements.',
-    'problem-solving': 'Focus on: Problem description, root cause analysis, solutions considered, and resolution.',
-    'general': 'Focus on: Key decisions, important discussions, outcomes, and next steps.'
-  }
-  
-  return `Meeting Notes Analysis (${meetingType.toUpperCase()} Meeting):
-
-Context: Analyze the following meeting notes and extract key information.
-${contextPrompts[meetingType as keyof typeof contextPrompts]}
-
-Meeting Notes:
-${input}
-
-Please provide a structured summary focusing on:
-1. Key decisions made
-2. Important discussions and outcomes
-3. Critical information shared
-4. Main topics covered
-
-Format your response as clear, actionable bullet points.`
-}
-
-// Parse structured summary with 4 sections
+// Parse structured summary with enhanced JSON structure
 function parseStructuredSummary(summaryText: string, originalInput: string): {
   keyDiscussionPoints: string[]
-  nextSteps: string[]
-  sopChecks: string[]
+  nextSteps: ActionItem[]
+  sopChecks: SOPCheck[]
   openQuestions: string[]
+  riskAssessment?: RiskItem[]
+  followUpReminders?: FollowUpReminder[]
+  meetingQuality?: MeetingQualityMetrics
 } {
+  try {
+    const jsonMatch = summaryText.match(/\{[\s\S]*\}/)
+    if (jsonMatch) {
+      const repaired = jsonrepair(jsonMatch[0])
+      const parsed = JSON.parse(repaired)
+      return {
+        keyDiscussionPoints: parsed.keyDiscussionPoints || [],
+        nextSteps: parsed.nextSteps || [],
+        sopChecks: parsed.sopChecks || [],
+        openQuestions: parsed.openQuestions || [],
+        riskAssessment: parsed.riskAssessment || [],
+        followUpReminders: parsed.followUpReminders || [],
+        meetingQuality: parsed.meetingQuality || undefined,
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to parse JSON, falling back to text parsing:', error)
+  }
+
+  // Fallback to legacy text parsing
   const sections = {
     keyDiscussionPoints: [] as string[],
-    nextSteps: [] as string[],
-    sopChecks: [] as string[],
-    openQuestions: [] as string[]
+    nextSteps: [] as ActionItem[],
+    sopChecks: [] as SOPCheck[],
+    openQuestions: [] as string[],
+    riskAssessment: [] as RiskItem[],
+    followUpReminders: [] as FollowUpReminder[],
+    meetingQuality: undefined as MeetingQualityMetrics | undefined
   }
 
   const lines = summaryText.split('\n').map(line => line.trim()).filter(line => line.length > 0)
@@ -349,30 +471,52 @@ function parseStructuredSummary(summaryText: string, originalInput: string): {
       continue
     }
 
-    // Extract bullet points
+    // Extract bullet points and convert to structured format
     if (currentSection && line.match(/^[-•*]\s+/)) {
       const bullet = line.replace(/^[-•*]\s+/, '').trim()
       if (bullet.length > 0) {
-        sections[currentSection as keyof typeof sections].push(bullet)
+        if (currentSection === 'nextSteps') {
+          sections.nextSteps.push({
+            task: bullet,
+            owner: 'TBD',
+            priority: 'medium',
+            successCriteria: 'Completion of task'
+          })
+        } else if (currentSection === 'sopChecks') {
+          sections.sopChecks.push({
+            category: 'General',
+            status: bullet.includes('✅') ? 'compliant' : bullet.includes('⚠️') ? 'partial' : 'missing',
+            details: bullet,
+            severity: bullet.includes('⚠️') ? 'important' : 'minor'
+          })
+        } else {
+          (sections[currentSection as keyof typeof sections] as string[]).push(bullet)
+        }
       }
     }
   }
-
-  // Validate and limit sections to PRD requirements (2-5 bullets each, except Open Questions 1-3)
-  sections.keyDiscussionPoints = validateSection(sections.keyDiscussionPoints, 2, 5, 'Key Discussion Points')
-  sections.nextSteps = validateSection(sections.nextSteps, 2, 5, 'Next Steps')
-  sections.sopChecks = validateSection(sections.sopChecks, 2, 5, 'SOP Checks')
-  sections.openQuestions = validateSection(sections.openQuestions, 1, 3, 'Open Questions')
 
   // Fallback if sections are empty
   if (sections.keyDiscussionPoints.length === 0) {
     sections.keyDiscussionPoints = extractKeyPoints(originalInput).slice(0, 5)
   }
   if (sections.nextSteps.length === 0) {
-    sections.nextSteps = extractActionItems(originalInput).slice(0, 5)
+    const legacyActions = extractActionItems(originalInput)
+    sections.nextSteps = legacyActions.map(action => ({
+      task: action,
+      owner: 'TBD',
+      priority: 'medium' as const,
+      successCriteria: 'Completion of task'
+    })).slice(0, 5)
   }
   if (sections.sopChecks.length === 0) {
-    sections.sopChecks = performSOPCheck(originalInput).slice(0, 5)
+    const legacySOPs = performSOPCheck(originalInput)
+    sections.sopChecks = legacySOPs.map(sop => ({
+      category: 'General',
+      status: (sop.includes('✅') ? 'compliant' : sop.includes('⚠️') ? 'partial' : 'missing') as 'compliant' | 'partial' | 'missing',
+      details: sop,
+      severity: (sop.includes('⚠️') ? 'important' : 'minor') as 'critical' | 'important' | 'minor'
+    })).slice(0, 5)
   }
   if (sections.openQuestions.length === 0) {
     sections.openQuestions = generateProbingQuestions(originalInput).slice(0, 3)
@@ -382,23 +526,6 @@ function parseStructuredSummary(summaryText: string, originalInput: string): {
 }
 
 // Validate section has correct number of bullets per PRD
-function validateSection(items: string[], min: number, max: number, sectionName: string): string[] {
-  if (items.length === 0) {
-    return [`No ${sectionName.toLowerCase()} noted`]
-  }
-  
-  if (items.length < min) {
-    // Pad with generic items if too few
-    const padded = [...items]
-    while (padded.length < min) {
-      padded.push(`Additional ${sectionName.toLowerCase()} item`)
-    }
-    return padded.slice(0, max)
-  }
-  
-  return items.slice(0, max)
-}
-
 // Extract key points from original input as fallback
 function extractKeyPoints(text: string): string[] {
   const sentences = text.split(/[.!?]/).filter(s => s.trim().length > 20)
@@ -419,27 +546,93 @@ function extractKeyPoints(text: string): string[] {
 
 // Calculate quality metrics for the summary
 // Demo mode function that works without API keys
-function generateDemoOutput(input: string, meetingType?: string): Promise<SummaryOutput> {
+function generateDemoOutput(input: string, meetingType?: MeetingType): Promise<SummaryOutput> {
   // Simulate processing delay
   return new Promise((resolve) => {
     setTimeout(() => {
       try {
-        const keyDiscussionPoints = [
-          'Meeting discussed key project updates',
-          'Team reviewed current progress and blockers',
-          'Decisions made on next phase priorities'
+        const detectedMeetingType = meetingType ?? detectMeetingType(input)
+        
+        // Generate realistic demo data based on input analysis
+        const keyDiscussionPoints = extractKeyPoints(input).slice(0, 4)
+        const legacyActions = extractActionItems(input)
+        const legacySOPs = performSOPCheck(input)
+        const openQuestions = generateProbingQuestions(input)
+        
+        // Convert legacy data to new structured format
+        const nextSteps: ActionItem[] = legacyActions.slice(0, 4).map((action, index) => ({
+          task: action,
+          owner: ['John Smith', 'Sarah Johnson', 'Mike Chen', 'Alex Rivera'][index] || 'TBD',
+          deadline: ['Next Friday', 'End of week', 'Monday', 'By next meeting'][index] || 'TBD',
+          priority: (['high', 'medium', 'low'] as const)[index % 3],
+          successCriteria: 'Task completion and stakeholder approval'
+        }))
+        
+        const sopChecks: SOPCheck[] = legacySOPs.slice(0, 4).map((sop, index) => ({
+          category: ['Meeting Preparation', 'Decision Documentation', 'Action Assignment', 'Follow-up Planning'][index] || 'General',
+          status: (sop.includes('✅') ? 'compliant' : sop.includes('⚠️') ? 'partial' : 'missing') as 'compliant' | 'partial' | 'missing',
+          details: sop,
+          recommendation: 'Continue current practices and improve documentation',
+          severity: (sop.includes('⚠️') ? 'important' : 'minor') as 'critical' | 'important' | 'minor'
+        }))
+        
+        const riskAssessment: RiskItem[] = [
+          {
+            risk: 'Payment gateway issues may impact user experience',
+            impact: 'high',
+            probability: 'medium',
+            mitigation: 'Implement monitoring and fallback payment methods',
+            owner: 'Engineering Team'
+          },
+          {
+            risk: 'Customer confusion about cashback policy',
+            impact: 'medium',
+            probability: 'high',
+            mitigation: 'Update app UI to clearly display cashback terms',
+            owner: 'Product Team'
+          }
         ]
         
-        const detectedMeetingType = meetingType ?? detectMeetingType(input)
-        const nextSteps = extractActionItems(input, detectedMeetingType)
-        const sopChecks = performSOPCheck(input, detectedMeetingType)
-        const openQuestions = generateProbingQuestions(input, detectedMeetingType)
-        const result = {
-          keyDiscussionPoints: keyDiscussionPoints.length > 0 ? keyDiscussionPoints : ['Demo key discussion point'],
-          nextSteps: nextSteps.length > 0 ? nextSteps : ['Demo next step'],
-          sopChecks: sopChecks.length > 0 ? sopChecks : ['✅ Demo SOP check'],
-          openQuestions: openQuestions.length > 0 ? openQuestions : ['Demo open question'],
+        const followUpReminders: FollowUpReminder[] = [
+          {
+            action: 'Coordinate with payment gateway provider',
+            dueDate: '2024-01-15',
+            owner: 'John Smith',
+            type: 'follow-up'
+          },
+          {
+            action: 'Review cashback policy communication',
+            dueDate: '2024-01-12',
+            owner: 'Sarah Johnson',
+            type: 'review'
+          }
+        ]
+        
+        const meetingQuality: MeetingQualityMetrics = {
+          overallScore: 7,
+          areas: {
+            preparation: 6,
+            participation: 8,
+            decisionMaking: 7,
+            actionClarity: 6,
+            followThrough: 8
+          },
+          recommendations: [
+            'Include more specific deadlines for action items',
+            'Document decision rationale more clearly',
+            'Set up regular check-ins for follow-up items'
+          ]
+        }
+        
+        const result: SummaryOutput = {
+          keyDiscussionPoints: keyDiscussionPoints.length > 0 ? keyDiscussionPoints : ['Key project updates discussed', 'Current blockers reviewed', 'Next phase priorities decided'],
+          nextSteps,
+          sopChecks,
+          openQuestions: openQuestions.length > 0 ? openQuestions : ['What is the timeline for resolving payment issues?', 'Who will communicate the cashback policy changes?'],
           meetingType: detectedMeetingType,
+          riskAssessment,
+          followUpReminders,
+          meetingQuality,
         }
         
         resolve(result)
@@ -448,8 +641,19 @@ function generateDemoOutput(input: string, meetingType?: string): Promise<Summar
         console.error('Demo mode error:', error)
         resolve({
           keyDiscussionPoints: ['Demo key discussion point'],
-          nextSteps: ['Demo next step'],
-          sopChecks: ['✅ Demo SOP check'],
+          nextSteps: [{
+            task: 'Demo action item',
+            owner: 'Demo Owner',
+            deadline: 'Next week',
+            priority: 'medium',
+            successCriteria: 'Task completion'
+          }],
+          sopChecks: [{
+            category: 'General',
+            status: 'compliant',
+            details: '✅ Demo SOP check',
+            severity: 'minor'
+          }],
           openQuestions: ['Demo open question'],
           meetingType: meetingType ?? 'general',
         })

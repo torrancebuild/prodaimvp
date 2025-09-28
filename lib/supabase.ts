@@ -24,12 +24,15 @@ export interface Meeting {
   user_id?: string
 }
 
+export type MeetingActionItems = Array<Record<string, unknown>>
+export type MeetingSOPGaps = Array<Record<string, unknown>>
+
 export interface MeetingOutput {
   id: string
   meeting_id: string
   summary: string
-  action_items: any
-  sop_gaps: any
+  action_items: MeetingActionItems
+  sop_gaps: MeetingSOPGaps
   probing_questions: string[]
   created_at: string
 }

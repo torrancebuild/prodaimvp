@@ -63,7 +63,6 @@ export default function ProcessingProgress({ isVisible }: ProcessingProgressProp
       return
     }
 
-    let totalTime = 0
     let currentTime = 0
 
     // Calculate total estimated time
@@ -78,7 +77,7 @@ export default function ProcessingProgress({ isVisible }: ProcessingProgressProp
 
       // Determine current stage based on elapsed time
       let stageTime = 0
-      let stageIndex = 0
+      let stageIndex = PROCESSING_STAGES.length - 1
 
       for (let i = 0; i < PROCESSING_STAGES.length; i++) {
         stageTime += PROCESSING_STAGES[i].estimatedTime
@@ -88,7 +87,7 @@ export default function ProcessingProgress({ isVisible }: ProcessingProgressProp
         }
       }
 
-      setCurrentStageIndex(Math.min(stageIndex, PROCESSING_STAGES.length - 1))
+      setCurrentStageIndex(stageIndex)
 
       // Complete after total time
       if (currentTime >= totalEstimatedTime) {
