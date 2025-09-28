@@ -18,12 +18,6 @@ interface SummaryOutput {
   sopCheck: string[]
   probingQuestions: string[]
   meetingType?: string
-  confidenceScore?: number
-  qualityMetrics?: {
-    completeness: number
-    clarity: number
-    actionability: number
-  }
 }
 
 export default function Home() {
@@ -232,58 +226,6 @@ export default function Home() {
               Copy to Clipboard
             </button>
           </div>
-
-          {/* Quality Metrics */}
-          {output.qualityMetrics && output.confidenceScore && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <h3 className="font-medium text-blue-900 mb-3 flex items-center gap-2">
-                Quality Assessment
-                <div className="group relative">
-                  <div className="w-4 h-4 bg-blue-200 rounded-full flex items-center justify-center cursor-help">
-                    <span className="text-blue-600 text-xs font-bold">?</span>
-                  </div>
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                    Hover over each metric to see what it measures
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
-                  </div>
-                </div>
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="text-center group relative">
-                  <div className="text-2xl font-bold text-blue-600 cursor-help">{Math.round(output.confidenceScore * 100)}%</div>
-                  <div className="text-sm text-blue-800">Overall Confidence</div>
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                    How confident the AI is in the accuracy and reliability of the entire summary
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
-                  </div>
-                </div>
-                <div className="text-center group relative">
-                  <div className="text-2xl font-bold text-green-600 cursor-help">{Math.round(output.qualityMetrics.completeness * 100)}%</div>
-                  <div className="text-sm text-green-800">Completeness</div>
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                    How thoroughly the summary covers all essential information from the original notes
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
-                  </div>
-                </div>
-                <div className="text-center group relative">
-                  <div className="text-2xl font-bold text-purple-600 cursor-help">{Math.round(output.qualityMetrics.clarity * 100)}%</div>
-                  <div className="text-sm text-purple-800">Clarity</div>
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                    How easy it is to understand and read the generated summary
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
-                  </div>
-                </div>
-                <div className="text-center group relative">
-                  <div className="text-2xl font-bold text-orange-600 cursor-help">{Math.round(output.qualityMetrics.actionability * 100)}%</div>
-                  <div className="text-sm text-orange-800">Actionability</div>
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                    How well the summary identifies clear next steps, decisions, and assigned tasks
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
 
           <div className="output-section">
             <h3 className="font-medium text-gray-900 mb-2">Summary</h3>

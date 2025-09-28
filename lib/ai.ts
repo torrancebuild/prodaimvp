@@ -4,16 +4,11 @@ export interface SummaryOutput {
   sopCheck: string[]
   probingQuestions: string[]
   meetingType?: string
-  confidenceScore?: number
-  qualityMetrics?: {
-    completeness: number
-    clarity: number
-    actionability: number
-  }
 }
 
-const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY
-const HUGGINGFACE_MODEL = process.env.HUGGINGFACE_SUMMARY_MODEL || 'facebook/bart-large-cnn'
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
+const CLAUDE_MODEL = process.env.CLAUDE_SUMMARY_MODEL || 'claude-3-haiku-20240307'
+
 const DEMO_MODE_FLAG =
   process.env.NEXT_PUBLIC_DEMO_MODE === 'true' ||
   process.env.DEMO_MODE === 'true'
@@ -26,30 +21,24 @@ export async function summarizeNotes(input: string): Promise<SummaryOutput> {
   }
 
   try {
-    const summarizerInput = prepareTextForSummarizer(input)
-    const summaryText = await fetchSummaryWithRetry(summarizerInput)
+    const summaryText = await fetchClaudeSummary(input)
     const summary = parseStructuredSummary(summaryText, input)
     const actionItems = extractActionItems(input, meetingType)
     const sopCheck = performSOPCheck(input, meetingType)
     const probingQuestions = generateProbingQuestions(input, meetingType)
-    const qualityMetrics = calculateQualityMetrics(summary, actionItems, sopCheck, input)
-    const confidenceScore = calculateConfidenceScore(qualityMetrics)
-
     return {
       summary,
       actionItems,
       sopCheck,
       probingQuestions,
       meetingType,
-      qualityMetrics,
-      confidenceScore,
     }
   } catch (error) {
-    console.error('Hugging Face summarization failed:', error)
+    console.error('Summarization failed:', error)
     if (error instanceof Error) {
       throw new Error(getReadableErrorMessage(error))
     }
-    throw new Error('Unexpected error while contacting the Hugging Face API.')
+    throw new Error('Unexpected error while contacting the summarization service.')
   }
 }
 
@@ -58,180 +47,71 @@ function shouldUseDemoMode(): boolean {
     return true
   }
 
-  if (!HUGGINGFACE_API_KEY) {
-    console.warn('HUGGINGFACE_API_KEY is not set. Falling back to demo mode output.')
+  if (!ANTHROPIC_API_KEY) {
+    console.warn('ANTHROPIC_API_KEY is not set. Falling back to demo mode output.')
     return true
   }
 
   return false
 }
 
-async function fetchSummaryWithRetry(prompt: string, retries = 2): Promise<string> {
-  try {
-    return await callHuggingFaceSummarizer(prompt)
-  } catch (error) {
-    if (retries > 0 && isRetryableError(error)) {
-      const backoff = 1000 * (3 - retries)
-      await sleep(backoff)
-      return fetchSummaryWithRetry(prompt, retries - 1)
-    }
-    throw error
-  }
-}
-
-async function callHuggingFaceSummarizer(prompt: string): Promise<string> {
-  if (!HUGGINGFACE_API_KEY) {
-    throw new Error('Missing Hugging Face API key.')
+async function fetchClaudeSummary(input: string): Promise<string> {
+  if (!ANTHROPIC_API_KEY) {
+    throw new Error('Missing Anthropic API key.')
   }
 
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 20000)
-
-  try {
-    const response = await fetch(`https://api-inference.huggingface.co/models/${HUGGINGFACE_MODEL}`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${HUGGINGFACE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        inputs: prompt,
-        parameters: {
-          max_length: 220,
-          min_length: 80,
-          do_sample: false,
-        },
-        options: {
-          wait_for_model: true,
-        },
-      }),
-      signal: controller.signal,
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: CLAUDE_MODEL,
+      max_tokens: 600,
+      temperature: 0.2,
+      system: 'You are an AI assistant that converts messy meeting notes into concise, structured summaries with headings for key discussion points and next steps. Use short bullet points.',
+      messages: [
+        {
+          role: 'user',
+          content: `Meeting Notes:\n${input}\n\nProduce two sections:\n1. Key Discussion Points (bullets)\n2. Next Steps & Owners (bullets)`
+        }
+      ]
     })
+  })
 
-    if (response.status === 429) {
-      throw new Error('Hugging Face rate limit reached. Please try again shortly.')
+  if (!response.ok) {
+    const errorText = await response.text()
+    try {
+      const parsed = JSON.parse(errorText)
+      const parsedMessage = parsed?.error?.message as string | undefined
+      throw new Error(parsedMessage || `Claude API error (${response.status})`)
+    } catch {
+      throw new Error(errorText || `Claude API error (${response.status})`)
     }
-
-    if (response.status === 401) {
-      throw new Error('Hugging Face authentication failed. Verify your API key.')
-    }
-
-    if (response.status === 503) {
-      const data = await response.json().catch(() => ({}))
-      const waitTimeSeconds = typeof data?.estimated_time === 'number' ? data.estimated_time : 2
-      throw new HuggingFaceModelLoadingError(waitTimeSeconds)
-    }
-
-    if (!response.ok) {
-      const message = await response.text()
-      throw new Error(`Hugging Face API error (${response.status}): ${message}`)
-    }
-
-    const data = await response.json()
-    const summaryText = extractSummaryText(data)
-
-    if (!summaryText) {
-      throw new Error('Hugging Face API returned an unexpected response format.')
-    }
-
-    return summaryText
-  } catch (error) {
-    if (error instanceof DOMException && error.name === 'AbortError') {
-      throw new Error('Hugging Face request timed out after 20 seconds.')
-    }
-    throw error
-  } finally {
-    clearTimeout(timeout)
-  }
-}
-
-function extractSummaryText(response: unknown): string | null {
-  if (!response) {
-    return null
   }
 
-  if (Array.isArray(response)) {
-    const firstEntry = response[0] as { summary_text?: string }
-    return firstEntry?.summary_text ?? null
+  const data = await response.json()
+  const content = data?.content?.[0]?.text
+
+  if (!content || typeof content !== 'string') {
+    throw new Error('Claude API returned an unexpected response format.')
   }
 
-  if (typeof response === 'object' && response !== null) {
-    const record = response as { summary_text?: string; generated_text?: string; text?: string }
-    return record.summary_text ?? record.generated_text ?? record.text ?? null
-  }
-
-  return null
-}
-
-function isRetryableError(error: unknown): boolean {
-  if (error instanceof HuggingFaceModelLoadingError) {
-    return true
-  }
-
-  if (error instanceof Error) {
-    return /timeout/i.test(error.message)
-  }
-
-  return false
-}
-
-function sleep(durationMs: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, durationMs))
-}
-
-class HuggingFaceModelLoadingError extends Error {
-  waitTimeSeconds: number
-
-  constructor(waitTimeSeconds: number) {
-    super('Hugging Face model is loading.')
-    this.name = 'HuggingFaceModelLoadingError'
-    this.waitTimeSeconds = waitTimeSeconds
-  }
+  return content
 }
 
 function getReadableErrorMessage(error: Error): string {
-  if (error instanceof HuggingFaceModelLoadingError) {
-    const waitTime = Math.ceil(error.waitTimeSeconds)
-    return `The Hugging Face model is waking up. Please retry in about ${waitTime} seconds.`
+  if (/credit balance/i.test(error.message)) {
+    return 'Anthropic account balance is low. Please add credits and try again.'
   }
 
-  if (/authentication failed/i.test(error.message)) {
-    return 'Authentication with Hugging Face failed. Verify your API key configuration.'
-  }
-
-  if (/rate limit/i.test(error.message)) {
-    return 'Hugging Face rate limit exceeded. Please wait a moment and try again.'
-  }
-
-  if (/timeout/i.test(error.message)) {
-    return 'The Hugging Face service timed out. Please try again.'
+  if (/api key/i.test(error.message)) {
+    return 'Anthropic API key is invalid or missing. Verify your credentials.'
   }
 
   return error.message || 'Unable to generate a summary at this time. Please try again later.'
-}
-
-function prepareTextForSummarizer(input: string): string {
-  const sanitized = input
-    .replace(/\s+/g, ' ')
-    .replace(/\s*\n\s*/g, ' ')
-    .trim()
-
-  if (sanitized.length <= 3000) {
-    return sanitized
-  }
-
-  // Prioritise beginning and action-heavy sentences to stay within model limits (~1024 tokens)
-  const sentences = sanitized.split(/(?<=[.!?])\s+/)
-  const importantSentences: string[] = []
-  let charCount = 0
-
-  for (const sentence of sentences) {
-    if (charCount >= 3000) break
-    importantSentences.push(sentence)
-    charCount += sentence.length
-  }
-
-  return importantSentences.join(' ')
 }
 
 function extractActionItems(text: string, meetingType: string = 'general'): string[] {
@@ -487,37 +367,6 @@ function extractKeyPoints(text: string): string[] {
 }
 
 // Calculate quality metrics for the summary
-function calculateQualityMetrics(summary: string[], actionItems: string[], sopCheck: string[], input: string) {
-  // Completeness: How well the summary covers the input
-  const inputLength = input.length
-  const summaryLength = summary.join(' ').length
-  const completeness = Math.min(summaryLength / (inputLength * 0.3), 1) // Target 30% compression
-  
-  // Clarity: Based on sentence structure and readability
-  const avgSentenceLength = summary.reduce((acc, item) => acc + item.length, 0) / summary.length
-  const clarity = Math.max(0, 1 - (avgSentenceLength - 50) / 100) // Optimal around 50 chars
-  
-  // Actionability: Based on action items and SOP compliance
-  const actionability = (actionItems.length * 0.2) + (sopCheck.filter(item => item.includes('✅')).length * 0.1)
-  
-  return {
-    completeness: Math.round(completeness * 100) / 100,
-    clarity: Math.round(clarity * 100) / 100,
-    actionability: Math.round(Math.min(actionability, 1) * 100) / 100
-  }
-}
-
-// Calculate overall confidence score
-function calculateConfidenceScore(qualityMetrics: { completeness: number; clarity: number; actionability: number }): number {
-  const weights = { completeness: 0.4, clarity: 0.3, actionability: 0.3 }
-  const score = (
-    qualityMetrics.completeness * weights.completeness +
-    qualityMetrics.clarity * weights.clarity +
-    qualityMetrics.actionability * weights.actionability
-  )
-  return Math.round(score * 100) / 100
-}
-
 // Demo mode function that works without API keys
 function generateDemoOutput(input: string, meetingType?: string): Promise<SummaryOutput> {
   // Simulate processing delay
@@ -534,17 +383,12 @@ function generateDemoOutput(input: string, meetingType?: string): Promise<Summar
         const actionItems = extractActionItems(input, detectedMeetingType)
         const sopCheck = performSOPCheck(input, detectedMeetingType)
         const probingQuestions = generateProbingQuestions(input, detectedMeetingType)
-        const qualityMetrics = calculateQualityMetrics(summary, actionItems, sopCheck, input)
-        const confidenceScore = calculateConfidenceScore(qualityMetrics)
-        
         const result = {
           summary: summary.length > 0 ? summary : ['Demo summary generated'],
           actionItems: actionItems.length > 0 ? actionItems : ['Demo action item'],
           sopCheck: sopCheck.length > 0 ? sopCheck : ['✅ Demo SOP check'],
           probingQuestions: probingQuestions.length > 0 ? probingQuestions : ['Demo probing question'],
           meetingType: detectedMeetingType,
-          qualityMetrics,
-          confidenceScore,
         }
         
         resolve(result)
