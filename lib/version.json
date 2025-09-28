@@ -1,8 +1,8 @@
 {
-  "commitHash": "5731f9d94feddfc8e7e79b4e29d0a848bbac1a53",
-  "shortHash": "5731f9d",
+  "commitHash": "1e60d076e6bf9362659042816e8a68c14d2d65b3",
+  "shortHash": "1e60d07",
   "branch": "staging",
-  "lastCommit": "Add MVP PRD outline",
-  "buildTime": "2025-09-28T08:49:51.873Z",
+  "lastCommit": "Enhance report export and copy feedback",
+  "buildTime": "2025-09-28T15:21:21.490Z",
   "version": "1.0.0"
 }
