@@ -4,7 +4,7 @@ Transform your messy meeting notes into structured, shareable outputs with AI-po
 
 ## 🚀 Features
 
-- **AI-Powered Summarization**: Uses Hugging Face's BART model for intelligent text summarization
+- **AI-Powered Summarization**: Uses Anthropic's Claude 3 Haiku model for intelligent text summarization
 - **Structured Output**: Generates summary, action items, SOP checks, and probing questions
 - **Real-time Validation**: 1000 character limit with visual feedback and progress tracking
 - **History Management**: Automatically saves and retrieves your last 10 meeting notes
@@ -17,7 +17,7 @@ Transform your messy meeting notes into structured, shareable outputs with AI-po
 - **Frontend**: Next.js 15, React 18, TypeScript
 - **Styling**: Tailwind CSS
 - **Database**: Supabase (PostgreSQL)
-- **AI Service**: Hugging Face Inference API
+- **AI Service**: Anthropic Claude 3 Haiku API
 - **Deployment**: Vercel-ready
 
 ## 📋 Prerequisites
@@ -25,7 +25,7 @@ Transform your messy meeting notes into structured, shareable outputs with AI-po
 - Node.js 18+ 
 - npm or yarn
 - Supabase account (free tier)
-- Hugging Face account (free tier)
+- Anthropic account with Claude API access (trial credits available)
 
 ## 🚀 Quick Start
 
@@ -57,8 +57,9 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
 
-# Hugging Face Configuration
-HUGGINGFACE_API_KEY=your_huggingface_api_key_here
+# Claude Configuration
+ANTHROPIC_API_KEY=your_claude_api_key_here
+CLAUDE_SUMMARY_MODEL=claude-3-haiku-20240307
 ```
 
 ### 4. Database Setup
@@ -78,12 +79,13 @@ Visit [http://localhost:3000](http://localhost:3000) to see your app!
 
 ## 🔧 API Configuration
 
-### Hugging Face Setup (Free)
+### Claude (Anthropic) Setup
 
-1. Go to [huggingface.co](https://huggingface.co) and create an account
-2. Navigate to **Settings** → **Access Tokens**
-3. Create a new token with **Read** permissions
-4. Add the token to your `.env.local` file
+1. Go to [console.anthropic.com](https://console.anthropic.com) and create an account
+2. Enable billing (trial credits are available for new users)
+3. Generate an API key under **API Keys**
+4. Add the key to your `.env.local` file as `ANTHROPIC_API_KEY`
+5. Optional: change `CLAUDE_SUMMARY_MODEL` if you want to use a different Claude variant
 
 ### Supabase Setup (Free)
 
@@ -253,7 +255,7 @@ The app is compatible with:
 
 - **Free Tier Limits**: 
   - Supabase: 500MB database, 50K API requests/month
-  - Hugging Face: Free inference API
+  - Anthropic: Usage billed per token; trial credits cover initial testing
 - **Optimizations**: 
   - Automatic cleanup (last 10 notes only)
   - Efficient database queries
@@ -271,8 +273,8 @@ The app is compatible with:
 ### Common Issues
 
 **"AI service not configured"**
-- Check your Hugging Face API key
-- Verify the key has read permissions
+- Check your Anthropic API key
+- Confirm billing/credits are active on your Anthropic account
 - Ensure no extra spaces in `.env.local`
 
 **"Failed to load history"**
@@ -327,7 +329,7 @@ This project is open source and available under the [MIT License](LICENSE).
 
 ## 🙏 Acknowledgments
 
-- [Hugging Face](https://huggingface.co) for the AI models
+- [Anthropic](https://www.anthropic.com) for Claude models
 - [Supabase](https://supabase.com) for the database platform
 - [Next.js](https://nextjs.org) for the framework
 - [Tailwind CSS](https://tailwindcss.com) for styling
