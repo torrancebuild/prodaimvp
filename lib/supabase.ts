@@ -69,10 +69,10 @@ export async function saveNote(title: string, input: string, output: string): Pr
       .insert([
         {
           meeting_id: meetingData.id,
-          summary: JSON.stringify(outputData.keyDiscussionPoints),
-          action_items: outputData.nextSteps,
-          sop_gaps: outputData.sopChecks || [],
-          probing_questions: outputData.openQuestions,
+          summary: JSON.stringify(outputData.summaryPoints || []),
+          action_items: outputData.actionItemsOrNextSteps || [],
+          sop_gaps: [], // No longer used in new structure
+          probing_questions: outputData.openQuestions || [],
         }
       ])
 
@@ -121,10 +121,13 @@ export async function getNotes(): Promise<Note[]> {
       title: meeting.title,
       input: meeting.raw_notes,
       output: JSON.stringify({
-        keyDiscussionPoints: meeting.meeting_outputs?.[0]?.summary ? JSON.parse(meeting.meeting_outputs[0].summary) : [],
-        nextSteps: meeting.meeting_outputs?.[0]?.action_items || [],
-        sopChecks: meeting.meeting_outputs?.[0]?.sop_gaps || [],
-        openQuestions: meeting.meeting_outputs?.[0]?.probing_questions || []
+        summaryPoints: meeting.meeting_outputs?.[0]?.summary ? JSON.parse(meeting.meeting_outputs[0].summary) : [],
+        actionItemsOrNextSteps: meeting.meeting_outputs?.[0]?.action_items || [],
+        openQuestions: meeting.meeting_outputs?.[0]?.probing_questions || [],
+        meetingType: 'sprint-review', // Default for existing records
+        // Include additional fields that might be present
+        riskAssessment: [],
+        followUpReminders: []
       }),
       created_at: meeting.created_at
     }))
