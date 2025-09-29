@@ -22,13 +22,6 @@ interface ActionItem {
   successCriteria?: string
 }
 
-interface SOPCheck {
-  category: string
-  status: 'compliant' | 'partial' | 'missing'
-  details: string
-  recommendation?: string
-  severity: 'critical' | 'important' | 'minor'
-}
 
 interface RiskItem {
   risk: string

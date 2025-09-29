@@ -1,8 +1,8 @@
 {
-  "commitHash": "40673d07ad57b6e9f40dfde68ebf4670e8f55168",
-  "shortHash": "40673d0",
+  "commitHash": "d1cb50879466671e56e8168707e90f04c00cf435",
+  "shortHash": "d1cb508",
   "branch": "staging",
-  "lastCommit": "Update docs for condensed report layout",
-  "buildTime": "2025-09-29T14:29:33.416Z",
+  "lastCommit": "feat: restructure meeting classification with specialized sections",
+  "buildTime": "2025-09-29T14:32:36.092Z",
   "version": "1.0.0"
 }

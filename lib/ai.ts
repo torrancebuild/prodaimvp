@@ -121,7 +121,7 @@ export async function summarizeNotes(input: string, selectedMeetingType: Meeting
 
   try {
     const summaryText = await fetchClaudeSummary(input, meetingType)
-    const parsedData = parseStructuredSummary(summaryText, input, meetingType)
+    const parsedData = parseStructuredSummary(summaryText, input)
     return {
       summaryPoints: parsedData.summaryPoints,
       actionItemsOrNextSteps: parsedData.actionItemsOrNextSteps,
@@ -155,28 +155,6 @@ function shouldUseDemoMode(): boolean {
   return false
 }
 
-function getMeetingSpecificPrompt(meetingType: MeetingType): string {
-  const prompts: Record<MeetingType, string> = {
-    'sprint-review': `You are analyzing a SPRINT/PLANNING REVIEW meeting. Focus on:
-- Progress updates, completed features, and upcoming roadmap items
-- Key deliverables, milestones achieved, and sprint outcomes
-- Blocker resolution and team coordination updates
-- Stakeholder communication and executive updates
-- Sprint metrics like velocity, burn-down, and KPIs
-
-Generate a comprehensive sprint review summary for stakeholders and teams.`,
-    'product-decision': `You are analyzing a PRODUCT DECISION MEETING. Focus on:
-- Feature prioritization decisions and strategic direction
-- Technical decisions and architectural choices
-- Business rationale and success criteria for decisions
-- Implementation plans, dependencies, and resource allocation
-- Strategic rationale and technical considerations
-
-Generate a detailed decision documentation for engineering teams and stakeholders.`
-  }
-
-  return prompts[meetingType]
-}
 
 async function fetchClaudeSummary(input: string, meetingType: MeetingType): Promise<string> {
   if (!ANTHROPIC_API_KEY) {
@@ -373,50 +351,6 @@ function extractActionItems(text: string): string[] {
   return actionItems.slice(0, 5) // Limit to 5 action items
 }
 
-function performSOPCheck(text: string): string[] {
-  const sopResults: string[] = []
-  
-  // Enhanced Goals Detection
-  const goalPatterns = [
-    /\b(?:goal|objective|purpose|aim|target|mission|vision)\b/i,
-    /\b(?:we need to|we want to|we should|we must)\b/i,
-    /\b(?:achieve|accomplish|deliver|complete|finish)\b/i
-  ]
-  const hasGoals = goalPatterns.some(pattern => pattern.test(text))
-  sopResults.push(hasGoals ? '✅ Goals covered' : '⚠️ Goals missing - Add specific objectives')
-  
-  // Enhanced Decisions Detection
-  const decisionPatterns = [
-    /\b(?:decided|decision|agreed|concluded|resolved|chose|selected|approved|rejected)\b/i,
-    /\b(?:we will|we won't|we should|we shouldn't)\b/i,
-    /\b(?:consensus|unanimous|majority|voted)\b/i,
-    /\b(?:final|definitive|conclusive|settled)\b/i
-  ]
-  const hasDecisions = decisionPatterns.some(pattern => pattern.test(text))
-  sopResults.push(hasDecisions ? '✅ Decisions documented' : '⚠️ Decisions missing - Document what was decided')
-  
-  // Enhanced Next Steps Detection
-  const nextStepPatterns = [
-    /\b(?:next|follow up|action|todo|deadline|due|schedule|timeline)\b/i,
-    /\b(?:by|before|until|on|at)\s+(?:tomorrow|next week|end of|monday|tuesday|wednesday|thursday|friday)\b/i,
-    /\b(?:assign|responsible|owner|lead|champion)\b/i,
-    /\b(?:milestone|deliverable|outcome|result)\b/i
-  ]
-  const hasNextSteps = nextStepPatterns.some(pattern => pattern.test(text))
-  sopResults.push(hasNextSteps ? '✅ Next steps defined' : '⚠️ Next steps missing - Define clear follow-up actions')
-  
-  // Additional SOP Checks
-  const hasParticipants = /\b(?:attendees|participants|team|members|present|absent)\b/i.test(text)
-  sopResults.push(hasParticipants ? '✅ Participants identified' : '⚠️ Participants missing - List who attended')
-  
-  const hasContext = /\b(?:background|context|situation|problem|issue|challenge)\b/i.test(text)
-  sopResults.push(hasContext ? '✅ Context provided' : '⚠️ Context missing - Add background information')
-  
-  const hasOutcomes = /\b(?:outcome|result|conclusion|summary|key takeaway|learned)\b/i.test(text)
-  sopResults.push(hasOutcomes ? '✅ Outcomes captured' : '⚠️ Outcomes missing - Document what was achieved')
-  
-  return sopResults
-}
 
 function generateProbingQuestions(text: string): string[] {
   const questions: string[] = []
@@ -475,7 +409,7 @@ function detectMeetingType(input: string): MeetingType {
 
 // Enhanced structured prompting for better AI outputs
 // Parse structured summary with enhanced JSON structure
-function parseStructuredSummary(summaryText: string, originalInput: string, meetingType: MeetingType): {
+function parseStructuredSummary(summaryText: string, originalInput: string): {
   summaryPoints: string[]
   actionItemsOrNextSteps: ActionItem[]
   openQuestions: string[]
