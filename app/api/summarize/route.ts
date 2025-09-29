@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { summarizeNotes } from '@/lib/ai'
 
-type MeetingType = 'daily-standup' | 'weekly-report' | 'risk-assessment' | 'general'
+type MeetingType = 'sprint-review' | 'product-decision'
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const result = await summarizeNotes(input, meetingType ?? 'general')
+    const result = await summarizeNotes(input, meetingType ?? 'sprint-review')
     
     return NextResponse.json(result)
   } catch (error) {

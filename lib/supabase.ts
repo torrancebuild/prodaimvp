@@ -71,7 +71,7 @@ export async function saveNote(title: string, input: string, output: string): Pr
           meeting_id: meetingData.id,
           summary: JSON.stringify(outputData.keyDiscussionPoints),
           action_items: outputData.nextSteps,
-          sop_gaps: outputData.sopChecks,
+          sop_gaps: outputData.sopChecks || [],
           probing_questions: outputData.openQuestions,
         }
       ])

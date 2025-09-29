@@ -1,8 +1,8 @@
 {
-  "commitHash": "1e60d076e6bf9362659042816e8a68c14d2d65b3",
-  "shortHash": "1e60d07",
+  "commitHash": "40673d07ad57b6e9f40dfde68ebf4670e8f55168",
+  "shortHash": "40673d0",
   "branch": "staging",
-  "lastCommit": "Enhance report export and copy feedback",
-  "buildTime": "2025-09-28T15:21:21.490Z",
+  "lastCommit": "Update docs for condensed report layout",
+  "buildTime": "2025-09-29T14:29:33.416Z",
   "version": "1.0.0"
 }

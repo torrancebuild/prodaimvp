@@ -13,7 +13,7 @@ async function testProcessingTime() {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ input: testInput }),
+      body: JSON.stringify({ input: testInput, meetingType: 'daily-standup' }),
     });
 
     const endTime = Date.now();
@@ -29,23 +29,34 @@ async function testProcessingTime() {
     console.log('✅ API Response received successfully!');
     console.log(`⏱️  Processing time: ${processingTime}ms (${(processingTime / 1000).toFixed(2)} seconds)`);
     console.log('\n📊 Response structure:');
+    console.log(`- Meeting Type: ${result.meetingType || 'unknown'}`);
     console.log(`- Key Discussion Points: ${result.keyDiscussionPoints ? result.keyDiscussionPoints.length : 0}`);
-    console.log(`- Next Steps: ${result.nextSteps ? result.nextSteps.length : 0}`);
-    console.log(`- SOP Checks: ${result.sopChecks ? result.sopChecks.length : 0}`);
+    console.log(`- Action Items: ${result.nextSteps ? result.nextSteps.length : 0}`);
+    console.log(`- SOP Checks: 0 (removed from core features)`);
     console.log(`- Open Questions: ${result.openQuestions ? result.openQuestions.length : 0}`);
+    console.log(`- Risk Assessment: ${result.riskAssessment ? result.riskAssessment.length : 0}`);
+    console.log(`- Follow-up Reminders: ${result.followUpReminders ? result.followUpReminders.length : 0}`);
+    console.log(`- Meeting Quality Score: ${result.meetingQuality ? result.meetingQuality.overallScore : 'N/A'}/10`);
     
     console.log('\n📝 Sample output:');
     if (result.keyDiscussionPoints && result.keyDiscussionPoints.length > 0) {
       console.log('Key Discussion Point:', result.keyDiscussionPoints[0]);
     }
     if (result.nextSteps && result.nextSteps.length > 0) {
-      console.log('Next Step:', result.nextSteps[0]);
+      const action = result.nextSteps[0];
+      console.log('Action Item:', action.task);
+      console.log('  Owner:', action.owner);
+      console.log('  Priority:', action.priority);
+      console.log('  Deadline:', action.deadline || 'TBD');
     }
-    if (result.sopChecks && result.sopChecks.length > 0) {
-      console.log('SOP Check:', result.sopChecks[0]);
-    }
+    // SOP Checks removed from core features
     if (result.openQuestions && result.openQuestions.length > 0) {
       console.log('Open Question:', result.openQuestions[0]);
+    }
+    if (result.riskAssessment && result.riskAssessment.length > 0) {
+      const risk = result.riskAssessment[0];
+      console.log('Risk:', risk.risk);
+      console.log('  Impact:', risk.impact, '| Probability:', risk.probability);
     }
     
   } catch (error) {

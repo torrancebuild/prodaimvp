@@ -45,27 +45,45 @@ interface FollowUpReminder {
   type: 'follow-up' | 'escalation' | 'review' | 'decision'
 }
 
-interface MeetingQualityMetrics {
-  overallScore: number
-  areas: {
-    preparation: number
-    participation: number
-    decisionMaking: number
-    actionClarity: number
-    followThrough: number
-  }
-  recommendations: string[]
-}
 
 interface SummaryOutput {
-  keyDiscussionPoints: string[]
-  nextSteps: ActionItem[]
-  sopChecks: SOPCheck[]
+  summaryPoints: string[]
+  actionItemsOrNextSteps: ActionItem[]
   openQuestions: string[]
-  meetingType?: string
+  meetingType: string
+  sprintReviewSections?: {
+    deliverablesCompleted: string[]
+    sprintMetrics: Array<{
+      name: string
+      value: string | number
+      trend?: 'up' | 'down' | 'stable'
+      description?: string
+    }>
+    blockersResolved: string[]
+    upcomingRoadmapItems: string[]
+    stakeholderUpdates: string[]
+  }
+  productDecisionSections?: {
+    decisionsMade: Array<{
+      decision: string
+      rationale: string
+      impact: 'high' | 'medium' | 'low'
+      owner?: string
+      deadline?: string
+    }>
+    strategicRationale: string[]
+    technicalConsiderations: string[]
+    successCriteria: string[]
+    resourceRequirements: Array<{
+      type: 'team' | 'timeline' | 'budget' | 'technology'
+      description: string
+      quantity?: string
+      timeline?: string
+      owner?: string
+    }>
+  }
   riskAssessment?: RiskItem[]
   followUpReminders?: FollowUpReminder[]
-  meetingQuality?: MeetingQualityMetrics
 }
 
 const MEETING_TYPES: Array<{
@@ -76,63 +94,35 @@ const MEETING_TYPES: Array<{
   accent: string
 }> = [
   {
-    id: 'daily-standup',
-    label: 'Daily Standup',
-    description: 'Surface blockers, dependencies, and today’s focus',
+    id: 'sprint-review',
+    label: 'Sprint/Planning Review',
+    description: 'Share progress updates, completed features, and upcoming roadmap',
     icon: '🚀',
     accent: 'blue'
   },
   {
-    id: 'weekly-report',
-    label: 'Weekly Report',
-    description: 'Summarize progress, metrics, and stakeholder updates',
-    icon: '📊',
+    id: 'product-decision',
+    label: 'Product Decision Meeting',
+    description: 'Document feature prioritization, technical decisions, and strategic direction',
+    icon: '💡',
     accent: 'emerald'
-  },
-  {
-    id: 'risk-assessment',
-    label: 'Risk Assessment',
-    description: 'Identify risks, impact, mitigation, and escalation paths',
-    icon: '⚠️',
-    accent: 'amber'
-  },
-  {
-    id: 'general',
-    label: 'General Meeting',
-    description: 'Comprehensive summary for any other meeting type',
-    icon: '💼',
-    accent: 'slate'
   }
 ] as const
 
 const MEETING_TYPE_STYLES: Record<MeetingType, { selected: string; unselected: string; badge: string; icon: string; focus: string }> = {
-  'daily-standup': {
+  'sprint-review': {
     selected: 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm',
     unselected: 'border-gray-200 hover:border-blue-300',
     badge: 'bg-blue-500',
     icon: 'text-blue-500',
     focus: 'focus:ring-blue-400'
   },
-  'weekly-report': {
+  'product-decision': {
     selected: 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm',
     unselected: 'border-gray-200 hover:border-emerald-300',
     badge: 'bg-emerald-500',
     icon: 'text-emerald-500',
     focus: 'focus:ring-emerald-400'
-  },
-  'risk-assessment': {
-    selected: 'border-amber-500 bg-amber-50 text-amber-700 shadow-sm',
-    unselected: 'border-gray-200 hover:border-amber-300',
-    badge: 'bg-amber-500',
-    icon: 'text-amber-500',
-    focus: 'focus:ring-amber-400'
-  },
-  general: {
-    selected: 'border-slate-500 bg-slate-50 text-slate-700 shadow-sm',
-    unselected: 'border-gray-200 hover:border-slate-300',
-    badge: 'bg-slate-500',
-    icon: 'text-slate-500',
-    focus: 'focus:ring-slate-400'
   }
 }
 
@@ -143,7 +133,7 @@ export default function Home() {
   const [error, setError] = useState('')
   const [history, setHistory] = useState<Note[]>([])
   const [inputError, setInputError] = useState('')
-  const [selectedMeetingType, setSelectedMeetingType] = useState<MeetingType>('daily-standup')
+  const [selectedMeetingType, setSelectedMeetingType] = useState<MeetingType>('sprint-review')
   const [copyStatus, setCopyStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const copyFeedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const selectedType = MEETING_TYPES.find(type => type.id === selectedMeetingType) ?? MEETING_TYPES[0]
@@ -251,9 +241,6 @@ export default function Home() {
       lines.push(`Meeting Type: ${formatSentenceCase(output.meetingType.replace(/-/g, ' '))}`)
     }
 
-    if (output.meetingQuality) {
-      lines.push(`Overall Quality Score: ${output.meetingQuality.overallScore}/10`)
-    }
 
     const addSection = (title: string, entries: string[]) => {
       lines.push('')
@@ -265,14 +252,17 @@ export default function Home() {
       }
     }
 
-    addSection('KEY DISCUSSION POINTS', output.keyDiscussionPoints.map(item => `- ${item}`))
+    addSection('SUMMARY POINTS', output.summaryPoints.map(item => `- ${item}`))
 
-    const actionItems = output.nextSteps.map(item => {
+    const actionItems = output.actionItemsOrNextSteps.map(item => {
       const details: string[] = [
         `Owner: ${item.owner}`,
-        `Deadline: ${item.deadline || 'TBD'}`,
-        `Priority: ${item.priority.toUpperCase()}`
+        `Deadline: ${item.deadline || 'TBD'}`
       ]
+
+      if (item.priority) {
+        details.push(`Priority: ${item.priority.toUpperCase()}`)
+      }
 
       if (item.successCriteria) {
         details.push(`Success Criteria: ${item.successCriteria}`)
@@ -285,23 +275,8 @@ export default function Home() {
       return `- ${item.task}\n  ${details.join(' | ')}`
     })
 
-    addSection('NEXT STEPS', actionItems)
+    addSection(output.meetingType === 'sprint-review' ? 'ACTION ITEMS' : 'NEXT STEPS', actionItems)
 
-    const sopChecks = output.sopChecks.map(item => {
-      const sopDetails: string[] = [
-        `Status: ${item.status.toUpperCase()}`,
-        `Severity: ${item.severity.toUpperCase()}`,
-        `Details: ${item.details}`
-      ]
-
-      if (item.recommendation) {
-        sopDetails.push(`Recommendation: ${item.recommendation}`)
-      }
-
-      return `- ${item.category}\n  ${sopDetails.join(' | ')}`
-    })
-
-    addSection('SOP CHECKS', sopChecks)
 
     addSection('OPEN QUESTIONS', output.openQuestions.map(question => `- ${question}`))
 
@@ -327,12 +302,6 @@ export default function Home() {
 
     addSection('FOLLOW-UP REMINDERS', reminders)
 
-    if (output.meetingQuality) {
-      const areaScores = Object.entries(output.meetingQuality.areas).map(([area, score]) => `- ${formatSentenceCase(area)}: ${score}/10`)
-      addSection('MEETING QUALITY SCORES', areaScores)
-
-      addSection('MEETING QUALITY RECOMMENDATIONS', output.meetingQuality.recommendations.map(rec => `- ${rec}`))
-    }
 
     const reportText = lines.join('\n').trim()
 
@@ -474,11 +443,6 @@ export default function Home() {
                   Meeting Type: <span className="font-medium capitalize bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">{output.meetingType.replace('-', ' ')}</span>
                 </p>
               )}
-              {output.meetingQuality && (
-                <p className="text-sm text-gray-600 mt-2">
-                  Overall Quality Score: <span className="font-bold text-lg text-green-600">{output.meetingQuality.overallScore}/10</span>
-                </p>
-              )}
             </div>
             <button
               onClick={copyToClipboard}
@@ -498,13 +462,13 @@ export default function Home() {
           </div>
 
           <div className="grid gap-4 xl:grid-cols-12">
-            {/* Key Discussion Points */}
+            {/* Summary Points */}
             <section className="bg-blue-50 border border-blue-200 rounded-lg p-5 xl:col-span-4">
               <h3 className="font-semibold text-blue-900 mb-2.5 flex items-center gap-2">
-                💬 Key Points
+                💬 Summary Points
               </h3>
               <ul className="flex flex-col gap-2">
-                {output.keyDiscussionPoints.map((item, index) => (
+                {output.summaryPoints.map((item, index) => (
                   <li key={index} className="text-blue-800 flex items-start gap-2">
                     <span className="text-blue-600 mt-1">•</span>
                     <span>{item}</span>
@@ -513,23 +477,25 @@ export default function Home() {
               </ul>
             </section>
 
-            {/* Action Items */}
-            <section className="bg-green-50 border border-green-200 rounded-lg p-5 xl:col-span-8">
+            {/* Action Items / Next Steps */}
+            <section className="bg-green-50 border border-green-200 rounded-lg p-5 xl:col-span-6">
               <h3 className="font-semibold text-green-900 mb-3 flex items-center gap-2">
-                ✅ Action Items
+                {output.meetingType === 'sprint-review' ? '✅ Action Items' : '📋 Next Steps'}
               </h3>
               <div className="flex flex-col gap-3">
-                {output.nextSteps.map((item, index) => (
+                {output.actionItemsOrNextSteps.map((item, index) => (
                   <div key={index} className="bg-white rounded-lg p-4 border border-green-100 shadow-sm">
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <h4 className="font-medium text-gray-900 leading-snug">{item.task}</h4>
-                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                        item.priority === 'high' ? 'bg-red-100 text-red-800' :
-                        item.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-green-100 text-green-800'
-                      }`}>
-                        {item.priority.toUpperCase()}
-                      </span>
+                      {item.priority && (
+                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                          item.priority === 'high' ? 'bg-red-100 text-red-800' :
+                          item.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-green-100 text-green-800'
+                        }`}>
+                          {item.priority.toUpperCase()}
+                        </span>
+                      )}
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs md:text-sm text-gray-600">
                       <span><strong>Owner:</strong> {item.owner}</span>
@@ -543,41 +509,6 @@ export default function Home() {
               </div>
             </section>
 
-            {/* SOP Checks */}
-            <section className="bg-orange-50 border border-orange-200 rounded-lg p-5 xl:col-span-6">
-              <h3 className="font-semibold text-orange-900 mb-3 flex items-center gap-2">
-                📋 SOP Compliance
-              </h3>
-              <div className="flex flex-col gap-3">
-                {output.sopChecks.map((item, index) => (
-                  <div key={index} className="bg-white rounded-lg p-4 border border-orange-100">
-                    <div className="flex items-start justify-between gap-3 mb-2">
-                      <h4 className="font-medium text-gray-900 leading-snug">{item.category}</h4>
-                      <div className="flex items-center gap-2">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          item.status === 'compliant' ? 'bg-green-100 text-green-800' :
-                          item.status === 'partial' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-red-100 text-red-800'
-                        }`}>
-                          {item.status.toUpperCase()}
-                        </span>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          item.severity === 'critical' ? 'bg-red-100 text-red-800' :
-                          item.severity === 'important' ? 'bg-orange-100 text-orange-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {item.severity.toUpperCase()}
-                        </span>
-                      </div>
-                    </div>
-                    <p className="text-sm text-gray-700 mb-1.5">{item.details}</p>
-                    {item.recommendation && (
-                      <p className="text-xs md:text-sm text-blue-600"><strong>Recommendation:</strong> {item.recommendation}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </section>
 
             {/* Risk Assessment */}
             {output.riskAssessment && output.riskAssessment.length > 0 && (
@@ -647,8 +578,200 @@ export default function Home() {
               </section>
             )}
 
+            {/* Sprint Review Sections */}
+            {output.sprintReviewSections && (
+              <>
+                <section className="bg-orange-50 border border-orange-200 rounded-lg p-5 xl:col-span-6">
+                  <h3 className="font-semibold text-orange-900 mb-3 flex items-center gap-2">
+                    🚀 Deliverables Completed
+                  </h3>
+                  <ul className="flex flex-col gap-2">
+                    {output.sprintReviewSections.deliverablesCompleted.map((item, index) => (
+                      <li key={index} className="text-orange-800 flex items-start gap-2">
+                        <span className="text-orange-600 mt-1">•</span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+
+                <section className="bg-purple-50 border border-purple-200 rounded-lg p-5 xl:col-span-6">
+                  <h3 className="font-semibold text-purple-900 mb-3 flex items-center gap-2">
+                    📊 Sprint Metrics
+                  </h3>
+                  <div className="flex flex-col gap-3">
+                    {output.sprintReviewSections.sprintMetrics.map((metric, index) => (
+                      <div key={index} className="bg-white rounded-lg p-3 border border-purple-100">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <h4 className="font-medium text-gray-900">{metric.name}</h4>
+                          <span className="text-lg font-bold text-purple-700">{metric.value}</span>
+                        </div>
+                        {metric.trend && (
+                          <div className="flex items-center gap-1 text-xs">
+                            <span className={`px-2 py-1 rounded-full ${
+                              metric.trend === 'up' ? 'bg-green-100 text-green-800' :
+                              metric.trend === 'down' ? 'bg-red-100 text-red-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {metric.trend === 'up' ? '↗' : metric.trend === 'down' ? '↘' : '→'} {metric.trend}
+                            </span>
+                          </div>
+                        )}
+                        {metric.description && (
+                          <p className="text-xs text-gray-600 mt-1">{metric.description}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="bg-yellow-50 border border-yellow-200 rounded-lg p-5 xl:col-span-6">
+                  <h3 className="font-semibold text-yellow-900 mb-3 flex items-center gap-2">
+                    🛠️ Blockers Resolved
+                  </h3>
+                  <ul className="flex flex-col gap-2">
+                    {output.sprintReviewSections.blockersResolved.map((item, index) => (
+                      <li key={index} className="text-yellow-800 flex items-start gap-2">
+                        <span className="text-yellow-600 mt-1">•</span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+
+                <section className="bg-indigo-50 border border-indigo-200 rounded-lg p-5 xl:col-span-6">
+                  <h3 className="font-semibold text-indigo-900 mb-3 flex items-center gap-2">
+                    🗺️ Upcoming Roadmap
+                  </h3>
+                  <ul className="flex flex-col gap-2">
+                    {output.sprintReviewSections.upcomingRoadmapItems.map((item, index) => (
+                      <li key={index} className="text-indigo-800 flex items-start gap-2">
+                        <span className="text-indigo-600 mt-1">•</span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+
+                <section className="bg-teal-50 border border-teal-200 rounded-lg p-5 xl:col-span-12">
+                  <h3 className="font-semibold text-teal-900 mb-3 flex items-center gap-2">
+                    📢 Stakeholder Updates
+                  </h3>
+                  <ul className="flex flex-col gap-2">
+                    {output.sprintReviewSections.stakeholderUpdates.map((item, index) => (
+                      <li key={index} className="text-teal-800 flex items-start gap-2">
+                        <span className="text-teal-600 mt-1">•</span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              </>
+            )}
+
+            {/* Product Decision Sections */}
+            {output.productDecisionSections && (
+              <>
+                <section className="bg-emerald-50 border border-emerald-200 rounded-lg p-5 xl:col-span-6">
+                  <h3 className="font-semibold text-emerald-900 mb-3 flex items-center gap-2">
+                    💡 Decisions Made
+                  </h3>
+                  <div className="flex flex-col gap-3">
+                    {output.productDecisionSections.decisionsMade.map((decision, index) => (
+                      <div key={index} className="bg-white rounded-lg p-4 border border-emerald-100">
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <h4 className="font-medium text-gray-900 leading-snug">{decision.decision}</h4>
+                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                            decision.impact === 'high' ? 'bg-red-100 text-red-800' :
+                            decision.impact === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-green-100 text-green-800'
+                          }`}>
+                            {decision.impact.toUpperCase()}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-700 mb-2"><strong>Rationale:</strong> {decision.rationale}</p>
+                        {decision.owner && (
+                          <p className="text-xs text-emerald-600"><strong>Owner:</strong> {decision.owner}</p>
+                        )}
+                        {decision.deadline && (
+                          <p className="text-xs text-emerald-600"><strong>Deadline:</strong> {decision.deadline}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="bg-cyan-50 border border-cyan-200 rounded-lg p-5 xl:col-span-6">
+                  <h3 className="font-semibold text-cyan-900 mb-3 flex items-center gap-2">
+                    🎯 Success Criteria
+                  </h3>
+                  <ul className="flex flex-col gap-2">
+                    {output.productDecisionSections.successCriteria.map((item, index) => (
+                      <li key={index} className="text-cyan-800 flex items-start gap-2">
+                        <span className="text-cyan-600 mt-1">•</span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+
+                <section className="bg-rose-50 border border-rose-200 rounded-lg p-5 xl:col-span-6">
+                  <h3 className="font-semibold text-rose-900 mb-3 flex items-center gap-2">
+                    🏗️ Technical Considerations
+                  </h3>
+                  <ul className="flex flex-col gap-2">
+                    {output.productDecisionSections.technicalConsiderations.map((item, index) => (
+                      <li key={index} className="text-rose-800 flex items-start gap-2">
+                        <span className="text-rose-600 mt-1">•</span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+
+                <section className="bg-violet-50 border border-violet-200 rounded-lg p-5 xl:col-span-6">
+                  <h3 className="font-semibold text-violet-900 mb-3 flex items-center gap-2">
+                    💰 Resource Requirements
+                  </h3>
+                  <div className="flex flex-col gap-3">
+                    {output.productDecisionSections.resourceRequirements.map((resource, index) => (
+                      <div key={index} className="bg-white rounded-lg p-3 border border-violet-100">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <h4 className="font-medium text-gray-900 capitalize">{resource.type}</h4>
+                          {resource.quantity && (
+                            <span className="text-sm font-semibold text-violet-700">{resource.quantity}</span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-700">{resource.description}</p>
+                        {resource.timeline && (
+                          <p className="text-xs text-violet-600 mt-1"><strong>Timeline:</strong> {resource.timeline}</p>
+                        )}
+                        {resource.owner && (
+                          <p className="text-xs text-violet-600"><strong>Owner:</strong> {resource.owner}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="bg-amber-50 border border-amber-200 rounded-lg p-5 xl:col-span-12">
+                  <h3 className="font-semibold text-amber-900 mb-3 flex items-center gap-2">
+                    🧠 Strategic Rationale
+                  </h3>
+                  <ul className="flex flex-col gap-2">
+                    {output.productDecisionSections.strategicRationale.map((item, index) => (
+                      <li key={index} className="text-amber-800 flex items-start gap-2">
+                        <span className="text-amber-600 mt-1">•</span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              </>
+            )}
+
             {/* Open Questions */}
-            <section className={`bg-gray-50 border border-gray-200 rounded-lg p-5 ${hasFollowUpReminders ? 'xl:col-span-4' : 'xl:col-span-6'}`}>
+            <section className={`bg-gray-50 border border-gray-200 rounded-lg p-5 ${hasFollowUpReminders ? 'xl:col-span-8' : 'xl:col-span-12'}`}>
               <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                 ❓ Open Questions
               </h3>
@@ -662,50 +785,6 @@ export default function Home() {
               </ul>
             </section>
 
-            {/* Meeting Quality Metrics */}
-            {output.meetingQuality && (
-              <section className={`bg-indigo-50 border border-indigo-200 rounded-lg p-5 ${hasFollowUpReminders ? 'xl:col-span-4' : 'xl:col-span-6'}`}>
-                <h3 className="font-semibold text-indigo-900 mb-3 flex items-center gap-2">
-                  📈 Meeting Quality
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-2">Quality Scores</h4>
-                    <div className="flex flex-col gap-2">
-                      {Object.entries(output.meetingQuality.areas).map(([area, score]) => (
-                        <div key={area} className="flex items-center justify-between gap-2">
-                          <span className="text-sm text-gray-600 capitalize">{area.replace(/([A-Z])/g, ' $1')}</span>
-                          <div className="flex items-center gap-2">
-                            <div className="w-20 bg-gray-200 rounded-full h-2">
-                              <div
-                                className={`h-2 rounded-full ${
-                                  score >= 8 ? 'bg-green-500' :
-                                  score >= 6 ? 'bg-yellow-500' :
-                                  'bg-red-500'
-                                }`}
-                                style={{ width: `${(score / 10) * 100}%` }}
-                              ></div>
-                            </div>
-                            <span className="text-sm font-medium w-8 text-right">{score}/10</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-2">Recommendations</h4>
-                    <ul className="flex flex-col gap-2">
-                      {output.meetingQuality.recommendations.map((rec, index) => (
-                        <li key={index} className="text-sm text-gray-700 flex items-start gap-2">
-                          <span className="text-indigo-500 mt-1">•</span>
-                          <span>{rec}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </section>
-            )}
           </div>
         </div>
       )}

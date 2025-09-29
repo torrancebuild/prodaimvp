@@ -1,11 +1,36 @@
-export type MeetingType = 'daily-standup' | 'weekly-report' | 'risk-assessment' | 'general'
+export type MeetingType = 'sprint-review' | 'product-decision'
 
-export interface SummaryOutput {
-  keyDiscussionPoints: string[]
-  nextSteps: ActionItem[]
-  sopChecks: SOPCheck[]
-  openQuestions: string[]
-  meetingType?: string
+// Core elements that both meeting types must include
+export interface CoreElements {
+  summaryPoints: string[] // 3-5 key discussion highlights
+  actionItemsOrNextSteps: ActionItem[] // Choose based on meeting type
+  openQuestions: string[] // Unresolved items needing follow-up
+}
+
+// Sprint/Planning Review specific sections
+export interface SprintReviewSections {
+  deliverablesCompleted: string[] // What was shipped/accomplished
+  sprintMetrics: SprintMetric[] // Velocity, burn-down, KPIs
+  blockersResolved: string[] // Impediments that were cleared
+  upcomingRoadmapItems: string[] // What's planned for next sprint/quarter
+  stakeholderUpdates: string[] // Key communications needed
+}
+
+// Product Decision Meeting specific sections
+export interface ProductDecisionSections {
+  decisionsMade: Decision[] // What was decided and why
+  strategicRationale: string[] // Business reasoning behind decisions
+  technicalConsiderations: string[] // Architecture, implementation approach
+  successCriteria: string[] // How we'll measure success
+  resourceRequirements: ResourceRequirement[] // Team, timeline, budget implications
+}
+
+export interface SummaryOutput extends CoreElements {
+  meetingType: MeetingType
+  // Meeting-specific sections (only one will be populated based on meeting type)
+  sprintReviewSections?: SprintReviewSections
+  productDecisionSections?: ProductDecisionSections
+  // Optional additional elements
   riskAssessment?: RiskItem[]
   followUpReminders?: FollowUpReminder[]
   meetingQuality?: MeetingQualityMetrics
@@ -18,6 +43,29 @@ export interface ActionItem {
   priority: 'high' | 'medium' | 'low'
   dependencies?: string[]
   successCriteria?: string
+}
+
+export interface SprintMetric {
+  name: string
+  value: string | number
+  trend?: 'up' | 'down' | 'stable'
+  description?: string
+}
+
+export interface Decision {
+  decision: string
+  rationale: string
+  impact: 'high' | 'medium' | 'low'
+  owner?: string
+  deadline?: string
+}
+
+export interface ResourceRequirement {
+  type: 'team' | 'timeline' | 'budget' | 'technology'
+  description: string
+  quantity?: string
+  timeline?: string
+  owner?: string
 }
 
 export interface SOPCheck {
@@ -64,8 +112,8 @@ const DEMO_MODE_FLAG =
   process.env.NEXT_PUBLIC_DEMO_MODE === 'true' ||
   process.env.DEMO_MODE === 'true'
 
-export async function summarizeNotes(input: string, selectedMeetingType: MeetingType = 'general'): Promise<SummaryOutput> {
-  const meetingType = selectedMeetingType === 'general' ? detectMeetingType(input) : selectedMeetingType
+export async function summarizeNotes(input: string, selectedMeetingType: MeetingType = 'sprint-review'): Promise<SummaryOutput> {
+  const meetingType = selectedMeetingType
 
   if (shouldUseDemoMode()) {
     return await generateDemoOutput(input, meetingType)
@@ -73,13 +121,14 @@ export async function summarizeNotes(input: string, selectedMeetingType: Meeting
 
   try {
     const summaryText = await fetchClaudeSummary(input, meetingType)
-    const parsedData = parseStructuredSummary(summaryText, input)
+    const parsedData = parseStructuredSummary(summaryText, input, meetingType)
     return {
-      keyDiscussionPoints: parsedData.keyDiscussionPoints,
-      nextSteps: parsedData.nextSteps,
-      sopChecks: parsedData.sopChecks,
+      summaryPoints: parsedData.summaryPoints,
+      actionItemsOrNextSteps: parsedData.actionItemsOrNextSteps,
       openQuestions: parsedData.openQuestions,
       meetingType,
+      sprintReviewSections: parsedData.sprintReviewSections,
+      productDecisionSections: parsedData.productDecisionSections,
       riskAssessment: parsedData.riskAssessment,
       followUpReminders: parsedData.followUpReminders,
       meetingQuality: parsedData.meetingQuality,
@@ -108,38 +157,25 @@ function shouldUseDemoMode(): boolean {
 
 function getMeetingSpecificPrompt(meetingType: MeetingType): string {
   const prompts: Record<MeetingType, string> = {
-    'daily-standup': `You are analyzing a DAILY STANDUP meeting. Focus on:
-- Blockers and dependencies requiring immediate attention
-- Team coordination, handoffs, and sprint commitments
-- Fast decisions needed to keep the team unblocked within the next 24 hours
-- Clear owners, deadlines, and escalation paths
+    'sprint-review': `You are analyzing a SPRINT/PLANNING REVIEW meeting. Focus on:
+- Progress updates, completed features, and upcoming roadmap items
+- Key deliverables, milestones achieved, and sprint outcomes
+- Blocker resolution and team coordination updates
+- Stakeholder communication and executive updates
+- Sprint metrics like velocity, burn-down, and KPIs
 
-Generate a concise plan of action for the next working day.`,
-    'weekly-report': `You are analyzing a WEEKLY REPORT meeting. Focus on:
-- Progress against goals, metrics, and commitments
-- Key wins, setbacks, and learnings the wider org should know
-- Trends over the past two weeks and predicted trajectory
-- Stakeholder communication or approvals required
+Generate a comprehensive sprint review summary for stakeholders and teams.`,
+    'product-decision': `You are analyzing a PRODUCT DECISION MEETING. Focus on:
+- Feature prioritization decisions and strategic direction
+- Technical decisions and architectural choices
+- Business rationale and success criteria for decisions
+- Implementation plans, dependencies, and resource allocation
+- Strategic rationale and technical considerations
 
-Generate an executive-ready report highlighting priorities for the upcoming week.`,
-    'risk-assessment': `You are analyzing a RISK ASSESSMENT meeting. Focus on:
-- Specific risks raised (technical, operational, financial, compliance)
-- Probability and impact ratings with rationale
-- Concrete mitigation steps, fallback plans, and monitoring signals
-- Escalation triggers and responsible owners
-
-Generate a risk matrix that leadership can act on immediately.`,
-    'general': `You are analyzing a GENERAL MEETING. Focus on:
-- Key decisions, agreements, and rationale
-- Action items with owners, deadlines, and success measures
-- Process/SOP gaps and recommended improvements
-- Open questions requiring follow-up or clarification
-- Meeting quality and follow-through readiness
-
-Generate comprehensive meeting intelligence.`
+Generate a detailed decision documentation for engineering teams and stakeholders.`
   }
 
-  return prompts[meetingType] ?? prompts.general
+  return prompts[meetingType]
 }
 
 async function fetchClaudeSummary(input: string, meetingType: MeetingType): Promise<string> {
@@ -158,30 +194,57 @@ async function fetchClaudeSummary(input: string, meetingType: MeetingType): Prom
       model: CLAUDE_MODEL,
       max_tokens: 800,
       temperature: 0.1,
-      system: `${getMeetingSpecificPrompt(meetingType)}
+      system: `You are a meeting summarizer focused on accuracy and clarity.
 
-ALWAYS respond with this EXACT JSON format (valid JSON only):
+Respond with this EXACT JSON format for ${meetingType.toUpperCase()} meetings:
 {
-  "keyDiscussionPoints": ["specific decision made", "important topic discussed", "critical update shared"],
-  "nextSteps": [
+  "summaryPoints": ["key discussion highlight 1", "key discussion highlight 2", "key discussion highlight 3"],
+  "actionItemsOrNextSteps": [
     {
       "task": "specific actionable task",
-      "owner": "person responsible",
-      "deadline": "specific date or timeframe",
+      "owner": "person responsible", 
+      "deadline": "when it's due or TBD",
       "priority": "high|medium|low",
-      "successCriteria": "how to measure completion"
-    }
-  ],
-  "sopChecks": [
-    {
-      "category": "Meeting Preparation|Decision Documentation|Action Assignment|Follow-up Planning|Stakeholder Communication",
-      "status": "compliant|partial|missing",
-      "details": "specific assessment",
-      "recommendation": "actionable improvement",
-      "severity": "critical|important|minor"
+      "successCriteria": "how success will be measured"
     }
   ],
   "openQuestions": ["specific question that needs answering"],
+  ${meetingType === 'sprint-review' ? `"sprintReviewSections": {
+    "deliverablesCompleted": ["feature X shipped", "bug Y fixed"],
+    "sprintMetrics": [
+      {
+        "name": "Velocity",
+        "value": "23 story points",
+        "trend": "up|down|stable",
+        "description": "Story points completed this sprint"
+      }
+    ],
+    "blockersResolved": ["blocker 1 resolved", "blocker 2 cleared"],
+    "upcomingRoadmapItems": ["feature A planned", "improvement B scheduled"],
+    "stakeholderUpdates": ["update for executives", "communication for customers"]
+  }` : `"productDecisionSections": {
+    "decisionsMade": [
+      {
+        "decision": "what was decided",
+        "rationale": "why this decision was made",
+        "impact": "high|medium|low",
+        "owner": "person responsible",
+        "deadline": "when to implement"
+      }
+    ],
+    "strategicRationale": ["business reason 1", "business reason 2"],
+    "technicalConsiderations": ["architecture decision", "implementation approach"],
+    "successCriteria": ["metric 1", "metric 2"],
+    "resourceRequirements": [
+      {
+        "type": "team|timeline|budget|technology",
+        "description": "what is needed",
+        "quantity": "how much",
+        "timeline": "when needed",
+        "owner": "who manages this"
+      }
+    ]
+  }`},
   "riskAssessment": [
     {
       "risk": "specific risk identified",
@@ -212,11 +275,14 @@ ALWAYS respond with this EXACT JSON format (valid JSON only):
   }
 }
 
-MANDATORY:
-- Use only double quotes for JSON keys/values and escape characters correctly.
-- Tailor every section to the ${meetingType.toUpperCase()} meeting context.
-- If a value is unknown, use "TBD" instead of hallucinating.
-- If requested number of items is not available, provide as many as possible and explain why.`,
+RULES:
+- Summary points: 3-5 key discussion highlights, use proper sentence case, end with periods
+- Action items/Next steps: Choose the most appropriate for the meeting type (action items for sprint reviews, next steps for product decisions)
+- If information is unclear, use "TBD" instead of guessing
+- Focus on what was actually discussed, not what should have been
+- Use specific names from the input, not generic terms like "team" or "we"
+- For sprint reviews: focus on deliverables, metrics, blockers, roadmap, stakeholder updates
+- For product decisions: focus on decisions, rationale, technical considerations, success criteria, resources`,
       messages: [
         {
           role: 'user',
@@ -390,34 +456,31 @@ function generateProbingQuestions(text: string): string[] {
 function detectMeetingType(input: string): MeetingType {
   const lowerText = input.toLowerCase()
   
-  if (lowerText.includes('standup') || lowerText.includes('status update') ||
-      lowerText.includes('yesterday') || lowerText.includes('today') ||
-      lowerText.includes('blocker') || lowerText.includes('dependency')) {
-    return 'daily-standup'
+  if (lowerText.includes('sprint') || lowerText.includes('planning') ||
+      lowerText.includes('review') || lowerText.includes('progress') ||
+      lowerText.includes('update') || lowerText.includes('milestone') ||
+      lowerText.includes('deliverable') || lowerText.includes('roadmap')) {
+    return 'sprint-review'
   }
 
-  if (lowerText.includes('risk') || lowerText.includes('mitigation') ||
-      lowerText.includes('impact') || lowerText.includes('probability') ||
-      lowerText.includes('contingency') || lowerText.includes('escalation')) {
-    return 'risk-assessment'
+  if (lowerText.includes('decision') || lowerText.includes('prioritization') ||
+      lowerText.includes('feature') || lowerText.includes('technical') ||
+      lowerText.includes('architecture') || lowerText.includes('strategy') ||
+      lowerText.includes('implementation') || lowerText.includes('rationale')) {
+    return 'product-decision'
   }
 
-  if (lowerText.includes('weekly') || lowerText.includes('report') ||
-      lowerText.includes('metrics') || lowerText.includes('kpi') ||
-      lowerText.includes('progress') || lowerText.includes('update')) {
-    return 'weekly-report'
-  }
-
-  return 'general'
+  return 'sprint-review' // Default to sprint-review
 }
 
 // Enhanced structured prompting for better AI outputs
 // Parse structured summary with enhanced JSON structure
-function parseStructuredSummary(summaryText: string, originalInput: string): {
-  keyDiscussionPoints: string[]
-  nextSteps: ActionItem[]
-  sopChecks: SOPCheck[]
+function parseStructuredSummary(summaryText: string, originalInput: string, meetingType: MeetingType): {
+  summaryPoints: string[]
+  actionItemsOrNextSteps: ActionItem[]
   openQuestions: string[]
+  sprintReviewSections?: SprintReviewSections
+  productDecisionSections?: ProductDecisionSections
   riskAssessment?: RiskItem[]
   followUpReminders?: FollowUpReminder[]
   meetingQuality?: MeetingQualityMetrics
@@ -428,10 +491,11 @@ function parseStructuredSummary(summaryText: string, originalInput: string): {
       const repaired = jsonrepair(jsonMatch[0])
       const parsed = JSON.parse(repaired)
       return {
-        keyDiscussionPoints: parsed.keyDiscussionPoints || [],
-        nextSteps: parsed.nextSteps || [],
-        sopChecks: parsed.sopChecks || [],
+        summaryPoints: parsed.summaryPoints || [],
+        actionItemsOrNextSteps: parsed.actionItemsOrNextSteps || [],
         openQuestions: parsed.openQuestions || [],
+        sprintReviewSections: parsed.sprintReviewSections || undefined,
+        productDecisionSections: parsed.productDecisionSections || undefined,
         riskAssessment: parsed.riskAssessment || [],
         followUpReminders: parsed.followUpReminders || [],
         meetingQuality: parsed.meetingQuality || undefined,
@@ -443,10 +507,11 @@ function parseStructuredSummary(summaryText: string, originalInput: string): {
 
   // Fallback to legacy text parsing
   const sections = {
-    keyDiscussionPoints: [] as string[],
-    nextSteps: [] as ActionItem[],
-    sopChecks: [] as SOPCheck[],
+    summaryPoints: [] as string[],
+    actionItemsOrNextSteps: [] as ActionItem[],
     openQuestions: [] as string[],
+    sprintReviewSections: undefined as SprintReviewSections | undefined,
+    productDecisionSections: undefined as ProductDecisionSections | undefined,
     riskAssessment: [] as RiskItem[],
     followUpReminders: [] as FollowUpReminder[],
     meetingQuality: undefined as MeetingQualityMetrics | undefined
@@ -457,14 +522,11 @@ function parseStructuredSummary(summaryText: string, originalInput: string): {
 
   for (const line of lines) {
     // Detect section headers
-    if (line.match(/^#+\s*Key Discussion Points/i)) {
-      currentSection = 'keyDiscussionPoints'
+    if (line.match(/^#+\s*Summary Points/i) || line.match(/^#+\s*Key Discussion Points/i)) {
+      currentSection = 'summaryPoints'
       continue
-    } else if (line.match(/^#+\s*Next Steps/i)) {
-      currentSection = 'nextSteps'
-      continue
-    } else if (line.match(/^#+\s*SOP Checks/i)) {
-      currentSection = 'sopChecks'
+    } else if (line.match(/^#+\s*Action Items/i) || line.match(/^#+\s*Next Steps/i)) {
+      currentSection = 'actionItemsOrNextSteps'
       continue
     } else if (line.match(/^#+\s*Open Questions/i)) {
       currentSection = 'openQuestions'
@@ -475,19 +537,12 @@ function parseStructuredSummary(summaryText: string, originalInput: string): {
     if (currentSection && line.match(/^[-•*]\s+/)) {
       const bullet = line.replace(/^[-•*]\s+/, '').trim()
       if (bullet.length > 0) {
-        if (currentSection === 'nextSteps') {
-          sections.nextSteps.push({
+        if (currentSection === 'actionItemsOrNextSteps') {
+          sections.actionItemsOrNextSteps.push({
             task: bullet,
             owner: 'TBD',
             priority: 'medium',
             successCriteria: 'Completion of task'
-          })
-        } else if (currentSection === 'sopChecks') {
-          sections.sopChecks.push({
-            category: 'General',
-            status: bullet.includes('✅') ? 'compliant' : bullet.includes('⚠️') ? 'partial' : 'missing',
-            details: bullet,
-            severity: bullet.includes('⚠️') ? 'important' : 'minor'
           })
         } else {
           (sections[currentSection as keyof typeof sections] as string[]).push(bullet)
@@ -497,25 +552,16 @@ function parseStructuredSummary(summaryText: string, originalInput: string): {
   }
 
   // Fallback if sections are empty
-  if (sections.keyDiscussionPoints.length === 0) {
-    sections.keyDiscussionPoints = extractKeyPoints(originalInput).slice(0, 5)
+  if (sections.summaryPoints.length === 0) {
+    sections.summaryPoints = extractKeyPoints(originalInput).slice(0, 5)
   }
-  if (sections.nextSteps.length === 0) {
+  if (sections.actionItemsOrNextSteps.length === 0) {
     const legacyActions = extractActionItems(originalInput)
-    sections.nextSteps = legacyActions.map(action => ({
+    sections.actionItemsOrNextSteps = legacyActions.map(action => ({
       task: action,
       owner: 'TBD',
       priority: 'medium' as const,
       successCriteria: 'Completion of task'
-    })).slice(0, 5)
-  }
-  if (sections.sopChecks.length === 0) {
-    const legacySOPs = performSOPCheck(originalInput)
-    sections.sopChecks = legacySOPs.map(sop => ({
-      category: 'General',
-      status: (sop.includes('✅') ? 'compliant' : sop.includes('⚠️') ? 'partial' : 'missing') as 'compliant' | 'partial' | 'missing',
-      details: sop,
-      severity: (sop.includes('⚠️') ? 'important' : 'minor') as 'critical' | 'important' | 'minor'
     })).slice(0, 5)
   }
   if (sections.openQuestions.length === 0) {
@@ -554,13 +600,12 @@ function generateDemoOutput(input: string, meetingType?: MeetingType): Promise<S
         const detectedMeetingType = meetingType ?? detectMeetingType(input)
         
         // Generate realistic demo data based on input analysis
-        const keyDiscussionPoints = extractKeyPoints(input).slice(0, 4)
+        const summaryPoints = extractKeyPoints(input).slice(0, 4)
         const legacyActions = extractActionItems(input)
-        const legacySOPs = performSOPCheck(input)
         const openQuestions = generateProbingQuestions(input)
         
         // Convert legacy data to new structured format
-        const nextSteps: ActionItem[] = legacyActions.slice(0, 4).map((action, index) => ({
+        const actionItemsOrNextSteps: ActionItem[] = legacyActions.slice(0, 4).map((action, index) => ({
           task: action,
           owner: ['John Smith', 'Sarah Johnson', 'Mike Chen', 'Alex Rivera'][index] || 'TBD',
           deadline: ['Next Friday', 'End of week', 'Monday', 'By next meeting'][index] || 'TBD',
@@ -568,13 +613,31 @@ function generateDemoOutput(input: string, meetingType?: MeetingType): Promise<S
           successCriteria: 'Task completion and stakeholder approval'
         }))
         
-        const sopChecks: SOPCheck[] = legacySOPs.slice(0, 4).map((sop, index) => ({
-          category: ['Meeting Preparation', 'Decision Documentation', 'Action Assignment', 'Follow-up Planning'][index] || 'General',
-          status: (sop.includes('✅') ? 'compliant' : sop.includes('⚠️') ? 'partial' : 'missing') as 'compliant' | 'partial' | 'missing',
-          details: sop,
-          recommendation: 'Continue current practices and improve documentation',
-          severity: (sop.includes('⚠️') ? 'important' : 'minor') as 'critical' | 'important' | 'minor'
-        }))
+        // Generate meeting-specific sections based on type
+        const sprintReviewSections: SprintReviewSections | undefined = detectedMeetingType === 'sprint-review' ? {
+          deliverablesCompleted: ['User authentication feature shipped', 'Mobile app performance improved', 'Bug fixes for payment flow'],
+          sprintMetrics: [
+            { name: 'Velocity', value: '23 story points', trend: 'up', description: 'Story points completed this sprint' },
+            { name: 'Burndown', value: 'On track', trend: 'stable', description: 'Sprint progress vs planned' }
+          ],
+          blockersResolved: ['Database connection timeout fixed', 'Third-party API integration completed'],
+          upcomingRoadmapItems: ['User dashboard redesign', 'Advanced analytics features', 'Mobile app optimization'],
+          stakeholderUpdates: ['Executive summary prepared', 'Customer communication drafted']
+        } : undefined
+
+        const productDecisionSections: ProductDecisionSections | undefined = detectedMeetingType === 'product-decision' ? {
+          decisionsMade: [
+            { decision: 'Implement microservices architecture', rationale: 'Better scalability and maintainability', impact: 'high', owner: 'Tech Lead', deadline: 'Q2 2024' },
+            { decision: 'Use React for frontend', rationale: 'Team expertise and ecosystem support', impact: 'medium', owner: 'Frontend Team', deadline: 'Next sprint' }
+          ],
+          strategicRationale: ['Improve system scalability for future growth', 'Reduce technical debt and maintenance costs'],
+          technicalConsiderations: ['Container orchestration with Kubernetes', 'API gateway for service communication'],
+          successCriteria: ['50% reduction in deployment time', '99.9% uptime target', 'Improved developer productivity'],
+          resourceRequirements: [
+            { type: 'team', description: '2 additional backend developers', quantity: '2', timeline: 'Q1 2024', owner: 'Engineering Manager' },
+            { type: 'budget', description: 'Infrastructure costs', quantity: '$10k/month', timeline: 'Ongoing', owner: 'Finance Team' }
+          ]
+        } : undefined
         
         const riskAssessment: RiskItem[] = [
           {
@@ -625,11 +688,12 @@ function generateDemoOutput(input: string, meetingType?: MeetingType): Promise<S
         }
         
         const result: SummaryOutput = {
-          keyDiscussionPoints: keyDiscussionPoints.length > 0 ? keyDiscussionPoints : ['Key project updates discussed', 'Current blockers reviewed', 'Next phase priorities decided'],
-          nextSteps,
-          sopChecks,
+          summaryPoints: summaryPoints.length > 0 ? summaryPoints : ['Key project updates discussed', 'Current blockers reviewed', 'Next phase priorities decided'],
+          actionItemsOrNextSteps,
           openQuestions: openQuestions.length > 0 ? openQuestions : ['What is the timeline for resolving payment issues?', 'Who will communicate the cashback policy changes?'],
           meetingType: detectedMeetingType,
+          sprintReviewSections,
+          productDecisionSections,
           riskAssessment,
           followUpReminders,
           meetingQuality,
@@ -640,22 +704,16 @@ function generateDemoOutput(input: string, meetingType?: MeetingType): Promise<S
       } catch (error) {
         console.error('Demo mode error:', error)
         resolve({
-          keyDiscussionPoints: ['Demo key discussion point'],
-          nextSteps: [{
+          summaryPoints: ['Demo key discussion point'],
+          actionItemsOrNextSteps: [{
             task: 'Demo action item',
             owner: 'Demo Owner',
             deadline: 'Next week',
             priority: 'medium',
             successCriteria: 'Task completion'
           }],
-          sopChecks: [{
-            category: 'General',
-            status: 'compliant',
-            details: '✅ Demo SOP check',
-            severity: 'minor'
-          }],
           openQuestions: ['Demo open question'],
-          meetingType: meetingType ?? 'general',
+          meetingType: meetingType ?? 'sprint-review',
         })
       }
     }, 3500) // 3.5 second delay to simulate realistic API call

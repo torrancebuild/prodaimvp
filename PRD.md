@@ -36,7 +36,7 @@
 
 3. **AI Summarization**
    - Default provider: Anthropic Claude 3 Haiku via `/api/summarize` POST.
-   - Request structured JSON covering: `keyDiscussionPoints`, `nextSteps`, `sopChecks`, `openQuestions`, `riskAssessment`, `followUpReminders`, and `meetingQuality`.
+   - Request structured JSON covering: `keyDiscussionPoints`, `nextSteps`, `openQuestions`, `riskAssessment`, `followUpReminders`, and `meetingQuality`.
    - If Claude response is invalid, surface a friendly error; heuristics are optional stretch goals.
    - Demo mode (no `ANTHROPIC_API_KEY` or `NEXT_PUBLIC_DEMO_MODE=true`) returns mock content matching the structured schema above.
 

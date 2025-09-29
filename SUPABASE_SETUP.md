@@ -23,9 +23,9 @@
 ### 3. Run Database Schema
 1. In your Supabase dashboard, go to **SQL Editor**
 2. Click **"New Query"**
-3. Copy and paste the entire contents of `supabase-schema.sql`
+3. Copy and paste the entire contents of `supabase-schema-current.sql`
 4. Click **"Run"**
-5. You should see a success message and a test record
+5. You should see a success message and test records for both tables
 
 ### 4. Configure Environment Variables
 1. Copy `env.template` to `.env.local`:
@@ -83,11 +83,22 @@ If you need to start over:
 
 ## 📊 Database Structure
 
-The `notes` table stores:
+The app uses two main tables:
+
+**`meetings` table stores:**
 - `id`: Unique identifier (UUID)
-- `title`: Short title (first 50 chars of input)
-- `input`: Original meeting notes
-- `output`: JSON string of AI results
+- `title`: Meeting title
+- `raw_notes`: Original meeting notes
+- `created_at`: Timestamp
+- `user_id`: Optional user identifier
+
+**`meeting_outputs` table stores:**
+- `id`: Unique identifier (UUID)
+- `meeting_id`: Foreign key to meetings table
+- `summary`: JSON string of key discussion points
+- `action_items`: JSON array of next steps
+- `sop_gaps`: JSON array of SOP compliance data (currently empty)
+- `probing_questions`: Array of open questions
 - `created_at`: Timestamp
 
-The app automatically keeps only the last 10 notes to stay within free tier limits.
+The app automatically keeps only the last 10 meetings to stay within free tier limits.
