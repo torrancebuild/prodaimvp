@@ -1,8 +1,8 @@
 {
-  "commitHash": "7dffb0a4f2a19f61c0062e4afc71b4c59f9afd17",
-  "shortHash": "7dffb0a",
-  "branch": "staging",
-  "lastCommit": "fix: update database save logic for new meeting structure",
-  "buildTime": "2025-09-29T14:38:12.726Z",
+  "commitHash": "bebc3c1235034f00c79fca43a33c57273f539a8f",
+  "shortHash": "bebc3c1",
+  "branch": "main",
+  "lastCommit": "chore: update version info for production build",
+  "buildTime": "2025-09-29T14:51:37.281Z",
   "version": "1.0.0"
 }

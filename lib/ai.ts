@@ -7,22 +7,21 @@ export interface CoreElements {
   openQuestions: string[] // Unresolved items needing follow-up
 }
 
-// Sprint/Planning Review specific sections
+// Sprint/Planning Review specific sections - 3 critical areas
 export interface SprintReviewSections {
-  deliverablesCompleted: string[] // What was shipped/accomplished
-  sprintMetrics: SprintMetric[] // Velocity, burn-down, KPIs
-  blockersResolved: string[] // Impediments that were cleared
-  upcomingRoadmapItems: string[] // What's planned for next sprint/quarter
-  stakeholderUpdates: string[] // Key communications needed
+  sprintMetrics: SprintMetric[] // 1) Sprint Metrics & Progress
+  actionItems: ActionItem[] // 2) Action Items with Ownership
+  blockersAndRoadmap: {
+    blockersResolved: string[] // 3) Blockers & Roadmap Updates
+    upcomingRoadmapItems: string[]
+  }
 }
 
-// Product Decision Meeting specific sections
+// Product Decision Meeting specific sections - 3 critical areas
 export interface ProductDecisionSections {
-  decisionsMade: Decision[] // What was decided and why
-  strategicRationale: string[] // Business reasoning behind decisions
-  technicalConsiderations: string[] // Architecture, implementation approach
-  successCriteria: string[] // How we'll measure success
-  resourceRequirements: ResourceRequirement[] // Team, timeline, budget implications
+  decisionsMade: Decision[] // 1) Decisions Made with Rationale
+  successCriteria: string[] // 2) Success Criteria & Impact
+  resourceRequirements: ResourceRequirement[] // 3) Resource Requirements & Timeline
 }
 
 export interface SummaryOutput extends CoreElements {
@@ -172,10 +171,11 @@ async function fetchClaudeSummary(input: string, meetingType: MeetingType): Prom
       model: CLAUDE_MODEL,
       max_tokens: 800,
       temperature: 0.1,
-      system: `You are a meeting summarizer focused on accuracy and clarity.
+      system: `You are a meeting summarizer focused on the 3 most critical things PMs need to share.
 
-Respond with this EXACT JSON format for ${meetingType.toUpperCase()} meetings:
-{
+For ${meetingType.toUpperCase()} meetings, respond with this EXACT JSON format focusing on ONLY the 3 critical sections:
+
+${meetingType === 'sprint-review' ? `{
   "summaryPoints": ["key discussion highlight 1", "key discussion highlight 2", "key discussion highlight 3"],
   "actionItemsOrNextSteps": [
     {
@@ -187,8 +187,7 @@ Respond with this EXACT JSON format for ${meetingType.toUpperCase()} meetings:
     }
   ],
   "openQuestions": ["specific question that needs answering"],
-  ${meetingType === 'sprint-review' ? `"sprintReviewSections": {
-    "deliverablesCompleted": ["feature X shipped", "bug Y fixed"],
+  "sprintReviewSections": {
     "sprintMetrics": [
       {
         "name": "Velocity",
@@ -197,10 +196,33 @@ Respond with this EXACT JSON format for ${meetingType.toUpperCase()} meetings:
         "description": "Story points completed this sprint"
       }
     ],
-    "blockersResolved": ["blocker 1 resolved", "blocker 2 cleared"],
-    "upcomingRoadmapItems": ["feature A planned", "improvement B scheduled"],
-    "stakeholderUpdates": ["update for executives", "communication for customers"]
-  }` : `"productDecisionSections": {
+    "actionItems": [
+      {
+        "task": "specific action item",
+        "owner": "person responsible",
+        "deadline": "when it's due or TBD",
+        "priority": "high|medium|low",
+        "successCriteria": "how success will be measured"
+      }
+    ],
+    "blockersAndRoadmap": {
+      "blockersResolved": ["blocker 1 resolved", "blocker 2 cleared"],
+      "upcomingRoadmapItems": ["feature A planned", "improvement B scheduled"]
+    }
+  }
+}` : `{
+  "summaryPoints": ["key discussion highlight 1", "key discussion highlight 2", "key discussion highlight 3"],
+  "actionItemsOrNextSteps": [
+    {
+      "task": "specific next step",
+      "owner": "person responsible", 
+      "deadline": "when it's due or TBD",
+      "priority": "high|medium|low",
+      "successCriteria": "how success will be measured"
+    }
+  ],
+  "openQuestions": ["specific question that needs answering"],
+  "productDecisionSections": {
     "decisionsMade": [
       {
         "decision": "what was decided",
@@ -210,9 +232,7 @@ Respond with this EXACT JSON format for ${meetingType.toUpperCase()} meetings:
         "deadline": "when to implement"
       }
     ],
-    "strategicRationale": ["business reason 1", "business reason 2"],
-    "technicalConsiderations": ["architecture decision", "implementation approach"],
-    "successCriteria": ["metric 1", "metric 2"],
+    "successCriteria": ["metric 1", "metric 2", "metric 3"],
     "resourceRequirements": [
       {
         "type": "team|timeline|budget|technology",
@@ -222,45 +242,15 @@ Respond with this EXACT JSON format for ${meetingType.toUpperCase()} meetings:
         "owner": "who manages this"
       }
     ]
-  }`},
-  "riskAssessment": [
-    {
-      "risk": "specific risk identified",
-      "impact": "high|medium|low",
-      "probability": "high|medium|low",
-      "mitigation": "specific mitigation strategy",
-      "owner": "person responsible for mitigation"
-    }
-  ],
-  "followUpReminders": [
-    {
-      "action": "specific follow-up action",
-      "dueDate": "specific date",
-      "owner": "person responsible",
-      "type": "follow-up|escalation|review|decision"
-    }
-  ],
-  "meetingQuality": {
-    "overallScore": 8,
-    "areas": {
-      "preparation": 7,
-      "participation": 8,
-      "decisionMaking": 9,
-      "actionClarity": 6,
-      "followThrough": 7
-    },
-    "recommendations": ["specific improvement recommendations for the next meeting"]
   }
-}
+}`}
 
-RULES:
-- Summary points: 3-5 key discussion highlights, use proper sentence case, end with periods
-- Action items/Next steps: Choose the most appropriate for the meeting type (action items for sprint reviews, next steps for product decisions)
-- If information is unclear, use "TBD" instead of guessing
-- Focus on what was actually discussed, not what should have been
-- Use specific names from the input, not generic terms like "team" or "we"
-- For sprint reviews: focus on deliverables, metrics, blockers, roadmap, stakeholder updates
-- For product decisions: focus on decisions, rationale, technical considerations, success criteria, resources`,
+CRITICAL FOCUS:
+- For SPRINT REVIEWS: Focus on 1) Sprint Metrics & Progress, 2) Action Items with Ownership, 3) Blockers & Roadmap Updates
+- For PRODUCT DECISIONS: Focus on 1) Decisions Made with Rationale, 2) Success Criteria & Impact, 3) Resource Requirements & Timeline
+- Keep each section concise but comprehensive
+- Use specific names from input, not generic terms
+- If information is unclear, use "TBD" instead of guessing`,
       messages: [
         {
           role: 'user',
@@ -547,16 +537,21 @@ function generateDemoOutput(input: string, meetingType?: MeetingType): Promise<S
           successCriteria: 'Task completion and stakeholder approval'
         }))
         
-        // Generate meeting-specific sections based on type
+        // Generate meeting-specific sections based on type - 3 critical areas only
         const sprintReviewSections: SprintReviewSections | undefined = detectedMeetingType === 'sprint-review' ? {
-          deliverablesCompleted: ['User authentication feature shipped', 'Mobile app performance improved', 'Bug fixes for payment flow'],
           sprintMetrics: [
             { name: 'Velocity', value: '23 story points', trend: 'up', description: 'Story points completed this sprint' },
-            { name: 'Burndown', value: 'On track', trend: 'stable', description: 'Sprint progress vs planned' }
+            { name: 'Burndown', value: 'On track', trend: 'stable', description: 'Sprint progress vs planned' },
+            { name: 'Quality', value: '95%', trend: 'up', description: 'Bug-free delivery rate' }
           ],
-          blockersResolved: ['Database connection timeout fixed', 'Third-party API integration completed'],
-          upcomingRoadmapItems: ['User dashboard redesign', 'Advanced analytics features', 'Mobile app optimization'],
-          stakeholderUpdates: ['Executive summary prepared', 'Customer communication drafted']
+          actionItems: [
+            { task: 'Complete user authentication testing', owner: 'John Smith', deadline: 'Next Friday', priority: 'high', successCriteria: 'All test cases pass' },
+            { task: 'Update mobile app performance metrics', owner: 'Sarah Johnson', deadline: 'End of week', priority: 'medium', successCriteria: 'Performance dashboard updated' }
+          ],
+          blockersAndRoadmap: {
+            blockersResolved: ['Database connection timeout fixed', 'Third-party API integration completed'],
+            upcomingRoadmapItems: ['User dashboard redesign', 'Advanced analytics features', 'Mobile app optimization']
+          }
         } : undefined
 
         const productDecisionSections: ProductDecisionSections | undefined = detectedMeetingType === 'product-decision' ? {
@@ -564,8 +559,6 @@ function generateDemoOutput(input: string, meetingType?: MeetingType): Promise<S
             { decision: 'Implement microservices architecture', rationale: 'Better scalability and maintainability', impact: 'high', owner: 'Tech Lead', deadline: 'Q2 2024' },
             { decision: 'Use React for frontend', rationale: 'Team expertise and ecosystem support', impact: 'medium', owner: 'Frontend Team', deadline: 'Next sprint' }
           ],
-          strategicRationale: ['Improve system scalability for future growth', 'Reduce technical debt and maintenance costs'],
-          technicalConsiderations: ['Container orchestration with Kubernetes', 'API gateway for service communication'],
           successCriteria: ['50% reduction in deployment time', '99.9% uptime target', 'Improved developer productivity'],
           resourceRequirements: [
             { type: 'team', description: '2 additional backend developers', quantity: '2', timeline: 'Q1 2024', owner: 'Engineering Manager' },
