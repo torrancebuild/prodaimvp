@@ -1,8 +1,8 @@
 {
-  "commitHash": "d1cb50879466671e56e8168707e90f04c00cf435",
-  "shortHash": "d1cb508",
+  "commitHash": "7dffb0a4f2a19f61c0062e4afc71b4c59f9afd17",
+  "shortHash": "7dffb0a",
   "branch": "staging",
-  "lastCommit": "feat: restructure meeting classification with specialized sections",
-  "buildTime": "2025-09-29T14:32:36.092Z",
+  "lastCommit": "fix: update database save logic for new meeting structure",
+  "buildTime": "2025-09-29T14:38:12.726Z",
   "version": "1.0.0"
 }
