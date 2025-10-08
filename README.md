@@ -1,18 +1,19 @@
-# AI Meeting Intelligence Platform
+# AI Development Team Meeting Summarizer
 
-Transform your messy meeting notes into actionable business intelligence with AI-powered analysis. Get specific action items with owners and deadlines, risk assessments, SOP compliance checks, and meeting quality metrics - all in one comprehensive report.
+Transform your development team meeting notes into actionable intelligence with AI-powered analysis. Designed specifically for product managers to quickly share key decisions, action items, and blockers with their development teams.
 
 ## 🚀 Features
 
-- **🧠 AI-Powered Business Intelligence**: Uses Anthropic's Claude 3 Haiku model for intelligent meeting analysis
+- **🧠 AI-Powered Analysis**: Uses Anthropic's Claude 3 Haiku model for intelligent meeting analysis
 - **📊 Structured Action Items**: Generates specific tasks with owners, deadlines, and success criteria
-- **📋 Intelligent SOP Compliance**: Checks meeting quality against business process standards
+- **💡 Key Decisions & Progress**: Captures important decisions with rationale and tracks progress updates
+- **🚧 Blockers & Next Steps**: Identifies current blockers and upcoming roadmap items
 - **⚠️ Risk Assessment**: Identifies potential risks with impact/probability analysis and mitigation strategies
 - **🔔 Follow-up Tracking**: Creates actionable reminders with due dates and owners
 - **📈 Meeting Quality Metrics**: Provides 1-10 scoring across preparation, participation, and decision-making
-- **💡 Context-Aware Questions**: Generates probing questions that identify missing critical information
+- **❓ Open Questions**: Generates probing questions that identify missing critical information
 - **📱 Beautiful UI**: Color-coded sections with priority badges and progress indicators
-- **📋 Enhanced Export**: Comprehensive clipboard export with meeting type, scores, and structured data
+- **📋 Enhanced Export**: Comprehensive clipboard export with structured data
 - **🔄 History Management**: Automatically saves and retrieves your last 10 meeting notes
 - **✅ Real-time Validation**: 1000 character limit with visual feedback and progress tracking
 - **🛡️ Error Handling**: Comprehensive error messages and fallback modes
@@ -104,11 +105,11 @@ Visit [http://localhost:3000](http://localhost:3000) to see your app! The dev se
 
 ### Basic Workflow
 
-1. **Enter Meeting Notes**: Paste your raw meeting notes into the text area
+1. **Enter Meeting Notes**: Paste your development team meeting notes into the text area
 2. **Validate Input**: The system validates length (10-1000 characters) in real-time
-3. **Process**: Click "Summarize Notes" to generate structured output
-4. **Review Results**: Get summary, action items, SOP checks, and probing questions
-5. **Export**: Use "Copy to Clipboard" to share results
+3. **Process**: Click "Analyze Meeting Notes" to generate structured output
+4. **Review Results**: Get key decisions, action items, blockers, and next steps
+5. **Export**: Use "Copy Full Report" to share results with your team
 6. **Save**: Notes are automatically saved to your history
 
 ### Input Validation
@@ -120,50 +121,77 @@ Visit [http://localhost:3000](http://localhost:3000) to see your app! The dev se
 
 ### Output Structure
 
-The AI generates a comprehensive **Meeting Intelligence Report** with a condensed, multi-column layout so key sections stay above the fold on desktop:
+The AI generates a comprehensive **Development Team Meeting Report** with a condensed, multi-column layout optimized for product managers:
 
-1. **💬 Key Discussion Points**: Critical decisions and important topics covered
-2. **✅ Action Items & Next Steps**: Specific tasks with:
+1. **💡 Key Decisions & Progress**: 
+   - Important decisions made with rationale and impact
+   - Progress updates on completed work
+   - Clear ownership and deadlines for decisions
+
+2. **✅ Action Items with Ownership**: Specific tasks with:
    - Clear ownership assignment
    - Realistic deadlines
    - Priority levels (high/medium/low)
    - Success criteria for completion
-3. **📋 SOP Compliance Check**: Business process validation with:
-   - Compliance status (compliant/partial/missing)
-   - Severity levels (critical/important/minor)
-   - Actionable recommendations for improvement
-4. **⚠️ Risk Assessment**: Identified risks with:
+
+3. **🚧 Blockers & Next Steps**:
+   - Current blockers preventing progress
+   - Upcoming roadmap items and milestones
+   - Clear visibility into what's coming next
+
+4. **❓ Open Questions**: Context-aware questions that identify missing information
+
+5. **⚠️ Risk Assessment**: Identified risks with:
    - Impact and probability analysis
    - Specific mitigation strategies
    - Risk ownership assignment
-5. **🔔 Follow-up Reminders**: Trackable actions with:
+
+6. **🔔 Follow-up Reminders**: Trackable actions with:
    - Due dates and owners
    - Action types (follow-up/escalation/review/decision)
-6. **❓ Open Questions**: Context-aware questions that identify missing information
+
 7. **📈 Meeting Quality Analysis**: 1-10 scoring across:
    - Meeting preparation
    - Team participation
    - Decision-making clarity
    - Action item clarity
    - Follow-through planning
-   - Trend-aligned recommendations
 
 ### Copy Export Structure
 
-The "Copy Full Report" button now exports a plain-text summary that mirrors the on-screen structure:
+The "Copy Full Report" button exports a plain-text summary that mirrors the on-screen structure:
 
 ```
 MEETING INTELLIGENCE REPORT
-Meeting Type: Weekly Report
-Overall Quality Score: 8/10
+Meeting Type: Development Team Meeting
 
-KEY DISCUSSION POINTS:
-- Critical roadmap items
-...
+SUMMARY POINTS:
+- Key discussion highlight 1
+- Key discussion highlight 2
 
-NEXT STEPS:
-- Task name
-  Owner: Jane | Deadline: Friday | Priority: HIGH | Success Criteria: ...
+KEY DECISIONS & PROGRESS:
+Decisions Made:
+- Decision: Implement microservices architecture
+  Rationale: Better scalability | Impact: HIGH | Owner: Tech Lead | Deadline: Q2 2024
+Progress Updates:
+- ✓ User authentication completed
+- ✓ Database optimization finished
+
+ACTION ITEMS WITH OWNERSHIP:
+- Complete user authentication testing
+  Owner: John Smith | Deadline: Next Friday | Priority: HIGH | Success: All test cases pass
+
+BLOCKERS & NEXT STEPS:
+Current Blockers:
+- ⚠️ Database connection timeout
+- ⚠️ Third-party API rate limits
+Upcoming Items:
+- → User dashboard redesign
+- → Advanced analytics features
+
+OPEN QUESTIONS:
+- What is the timeline for resolving payment issues?
+- Who will communicate the cashback policy changes?
 ```
 
 Each section falls back to `- None` when empty so downstream workflows see consistent headers.

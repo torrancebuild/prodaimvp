@@ -2,17 +2,17 @@
 
 ## 1. Overview
 
-**Product Vision:** Help customer-facing teams transform messy meeting notes into concise, structured summaries that make action items, SOP gaps, and follow-up questions obvious within seconds.
+**Product Vision:** Help product managers transform development team meeting notes into concise, structured summaries that make key decisions, action items, and blockers obvious within seconds.
 
-**MVP Goal:** Deliver a single-page web app that accepts raw notes (≤1000 chars) and outputs a multi-section intelligence report powered by Anthropic Claude 3 Haiku, with optional demo mode for onboarding without API keys.
+**MVP Goal:** Deliver a single-page web app that accepts raw development team meeting notes (≤1000 chars) and outputs a multi-section intelligence report powered by Anthropic Claude 3 Haiku, with optional demo mode for onboarding without API keys.
 
 ## 2. Target Users & Needs
 
 | Persona | Needs | Pain Points |
 | --- | --- | --- |
-| Customer Success Manager | Recap calls quickly, assign ownership, share follow-ups | Manual note cleanup is slow; next steps get lost |
-| Operations Leader | Ensure meetings follow SOP/QA standards | Hard to check consistency across teams |
-| Product Manager (secondary) | Capture key decisions & open questions from discovery calls | Sifting through transcripts is time-consuming |
+| Product Manager (Primary) | Quickly share key decisions, action items, and blockers with development teams | Manual note cleanup is slow; important decisions get lost in long meeting notes |
+| Development Team Lead | Get clear visibility into decisions, progress, and upcoming work | Hard to track what was decided and who's responsible for what |
+| Engineering Manager | Ensure meetings have clear outcomes and follow-up actions | Meetings often lack structure and clear next steps |
 
 ## 3. Success Metrics
 
@@ -31,19 +31,19 @@
    - Prevent submission if validation fails; show inline error.
 
 2. **Processing UX**
-   - Button `Summarize Notes`; disabled while loading.
+   - Button `Analyze Meeting Notes`; disabled while loading.
    - Progress indicator with 6 stages; resets when API completes or fails.
 
 3. **AI Summarization**
    - Default provider: Anthropic Claude 3 Haiku via `/api/summarize` POST.
-   - Request structured JSON covering: `keyDiscussionPoints`, `nextSteps`, `openQuestions`, `riskAssessment`, `followUpReminders`, and `meetingQuality`.
+   - Request structured JSON covering: `summaryPoints`, `actionItems`, `openQuestions`, `developmentTeamSections`, `riskAssessment`, `followUpReminders`, and `meetingQuality`.
    - If Claude response is invalid, surface a friendly error; heuristics are optional stretch goals.
    - Demo mode (no `ANTHROPIC_API_KEY` or `NEXT_PUBLIC_DEMO_MODE=true`) returns mock content matching the structured schema above.
 
 4. **Output Presentation**
    - Display sections in a responsive, condensed multi-column layout on desktop while stacking on mobile.
-   - Headings: “Key Points”, “Action Items”, “SOP Compliance”, “Risk Assessment”, “Follow-ups”, “Open Questions”, “Meeting Quality”.
-   - Bullet formatting: sentence case, no trailing punctuation, highlight SOP gaps with icon (⚠️).
+   - Headings: "Key Decisions & Progress", "Action Items with Ownership", "Blockers & Next Steps", "Open Questions".
+   - Bullet formatting: sentence case, no trailing punctuation, highlight blockers with icon (⚠️).
    - Meeting quality shows per-area scores with bars and recommendations.
    - Copy-to-clipboard mirrors the section structure, including meeting type and scores.
 
@@ -88,14 +88,14 @@
 | Milestone | Deliverables | Target |
 | --- | --- | --- |
 | M1: Baseline UX | Input form, validation, progress indicator, demo mode output | Week 1 |
-| M2: Claude Integration | API route with improved prompt + four-section UI | Week 2 |
+| M2: Claude Integration | API route with improved prompt + three-section UI | Week 2 |
 | M3: Optional Persistence | Supabase save/load, history panel (if kept) | Week 2 |
 | M4: Quality Pass | Prompt tuned against sample notes, docs updated, smoke tests | Week 3 |
 
 ## 9. QA & Acceptance Criteria
 
-- ✅ Submit sample messy notes → response renders four sections with 2–5 bullets each.
-- ✅ Each section appears even if empty (“No next steps noted”).
+- ✅ Submit sample development team meeting notes → response renders three critical sections with 2–5 bullets each.
+- ✅ Each section appears even if empty ("No blockers noted").
 - ✅ Claude errors display friendly message; demo mode works without `.env` keys.
 - ✅ If Supabase enabled: history saves only on success and never exceeds 10 entries.
 - ✅ README and PRD kept current with provider and setup steps.

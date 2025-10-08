@@ -1,8 +1,8 @@
 {
-  "commitHash": "bebc3c1235034f00c79fca43a33c57273f539a8f",
-  "shortHash": "bebc3c1",
+  "commitHash": "3a7236e65f803fb207fb4d29ff7802b296a53633",
+  "shortHash": "3a7236e",
   "branch": "main",
-  "lastCommit": "chore: update version info for production build",
-  "buildTime": "2025-09-29T14:51:37.281Z",
+  "lastCommit": "feat: simplify UI to focus on 3 critical sections per meeting type",
+  "buildTime": "2025-10-08T15:13:22.746Z",
   "version": "1.0.0"
 }

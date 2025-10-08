@@ -39,45 +39,16 @@ export interface MeetingOutput {
 
 export async function saveNote(title: string, input: string, output: string): Promise<void> {
   try {
-    if (!supabase) {
-      console.log('Supabase not configured - skipping save (demo mode)')
-      return
-    }
+    // Always go through server API to avoid client-side RLS issues
+    const response = await fetch('/api/save-note', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, input, output })
+    })
 
-    // Parse the output to extract structured data
-    const outputData = JSON.parse(output)
-    
-    // First, save the meeting
-    const { data: meetingData, error: meetingError } = await supabase
-      .from('meetings')
-      .insert([
-        {
-          title,
-          raw_notes: input,
-        }
-      ])
-      .select()
-      .single()
-
-    if (meetingError) {
-      throw new Error(`Failed to save meeting: ${meetingError.message}`)
-    }
-
-    // Then, save the meeting output
-    const { error: outputError } = await supabase
-      .from('meeting_outputs')
-      .insert([
-        {
-          meeting_id: meetingData.id,
-          summary: JSON.stringify(outputData.summaryPoints || []),
-          action_items: outputData.actionItemsOrNextSteps || [],
-          sop_gaps: [], // No longer used in new structure
-          probing_questions: outputData.openQuestions || [],
-        }
-      ])
-
-    if (outputError) {
-      throw new Error(`Failed to save meeting output: ${outputError.message}`)
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}))
+      throw new Error(err?.error || 'Failed to save note')
     }
 
     // Keep only the last 10 meetings
@@ -89,34 +60,15 @@ export async function saveNote(title: string, input: string, output: string): Pr
 
 export async function getNotes(): Promise<Note[]> {
   try {
-    if (!supabase) {
-      console.log('Supabase not configured - returning empty history (demo mode)')
-      return []
+    const response = await fetch('/api/get-notes')
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}))
+      throw new Error(err?.error || 'Failed to load notes')
     }
+    const payload = await response.json()
+    const data = (payload?.data || []) as MeetingWithOutputs[]
 
-    const { data, error } = await supabase
-      .from('meetings')
-      .select(`
-        id,
-        title,
-        raw_notes,
-        created_at,
-        meeting_outputs (
-          summary,
-          action_items,
-          sop_gaps,
-          probing_questions
-        )
-      `)
-      .order('created_at', { ascending: false })
-      .limit(10)
-
-    if (error) {
-      throw new Error(`Database error: ${error.message}`)
-    }
-
-    // Transform the data to match our Note interface
-    const notes: Note[] = (data || []).map(meeting => ({
+    const notes: Note[] = data.map((meeting) => ({
       id: meeting.id,
       title: meeting.title,
       input: meeting.raw_notes,
@@ -124,8 +76,7 @@ export async function getNotes(): Promise<Note[]> {
         summaryPoints: meeting.meeting_outputs?.[0]?.summary ? JSON.parse(meeting.meeting_outputs[0].summary) : [],
         actionItemsOrNextSteps: meeting.meeting_outputs?.[0]?.action_items || [],
         openQuestions: meeting.meeting_outputs?.[0]?.probing_questions || [],
-        meetingType: 'sprint-review', // Default for existing records
-        // Include additional fields that might be present
+        meetingType: 'sprint-review',
         riskAssessment: [],
         followUpReminders: []
       }),
@@ -184,4 +135,20 @@ async function keepLast10Meetings(): Promise<void> {
   } catch (error) {
     console.error('Error in keepLast10Meetings:', error)
   }
+}
+
+// Types for API payloads
+interface MeetingOutputRow {
+  summary?: string
+  action_items?: unknown[]
+  sop_gaps?: unknown[]
+  probing_questions?: string[]
+}
+
+interface MeetingWithOutputs {
+  id: string
+  title: string
+  raw_notes: string
+  created_at: string
+  meeting_outputs?: MeetingOutputRow[]
 }

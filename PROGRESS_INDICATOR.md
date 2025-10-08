@@ -25,8 +25,8 @@ The processing progress indicator provides users with visual feedback during the
 3. **Identifying Action Items** (600ms)
    - Finding tasks and responsibilities
    
-4. **Checking SOPs** (500ms)
-   - Validating meeting structure and completeness
+4. **Analyzing Decisions** (500ms)
+   - Identifying key decisions and progress updates
    
 5. **Generating Summary** (700ms)
    - Creating structured output and probing questions
